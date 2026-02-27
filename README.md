@@ -1,0 +1,237 @@
+# wyx
+
+[![Version](https://img.shields.io/badge/version-0.16.0-blue)](https://github.com/jlifyio/wyx/releases/tag/v0.16.0) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-orange)](https://claude.com/claude-code)
+
+**Architecture guardrails for Claude Code** — teach Claude your module boundaries. wyx automatically injects them into Claude's context on every write.
+
+```mermaid
+graph LR
+    A["You write CONCEPT.md<br/>## interactions<br/>- NEVER access Orders repository"] -->|"wyx hook fires<br/>on every write"| B["Claude sees boundaries<br/>before writing code"]
+    B --> C["Claude uses getOrderTotal()<br/>via service API ✅"]
+    B -.->|"without wyx"| D["Claude imports findOrder()<br/>from orders/repository ❌"]
+
+    style C fill:#2d6a2d,color:#fff
+    style D fill:#8b1a1a,color:#fff
+```
+
+## What it looks like
+
+```diff
+# Without wyx — Claude reaches into module internals
+- import { findOrder } from "../orders/repository"
+
+# With wyx — Claude uses the declared service API
++ import { getOrderTotal } from "../orders/service"
+```
+
+You write a short spec describing your module boundaries. wyx injects those boundaries into Claude's context on every write — Claude sees them and self-checks before each edit.
+
+**In testing (N=6 features, 2 projects):** 33 cross-module imports checked, 0 violations. Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
+
+## Install
+
+```bash
+/plugin marketplace add jlifyio/claude-plugins
+/plugin install wyx@jlifyio
+```
+
+> **Try it in 2 minutes** — clone the [wyx-example](https://github.com/jlifyio/wyx-example) repo, a small e-commerce project with pre-written specs and intentional drift to discover.
+
+## How it works
+
+**1. Create a spec** — run `/wyx:concept src/payments/` on an existing module:
+
+```markdown
+# concept: Payments [PaymentId]
+
+## interactions
+- READS order total FROM Orders (via getOrderTotal service API only)
+- NEVER directly accesses Orders repository or Inventory internals
+
+## dependencies
+- Orders: read-only via getOrderTotal()
+```
+
+**2. wyx injects it automatically.** Whenever Claude writes or edits a file near this spec, the PreToolUse hook injects the boundary declarations (`## interactions`, `## dependencies`) into Claude's context. Claude sees the boundaries and self-checks before each write.
+
+**3. Drift detection catches divergence.** Run `/wyx:concept drift` to find where code has drifted from specs:
+
+```
+## Payments — src/payments/CONCEPT.md
+### High
+- Boundary violation: payments/service.ts imports orders/repository directly
+  — spec says to use getOrderTotal() via service API
+
+### Medium
+- Missing action: refund() exists in code but not declared in spec
+```
+
+## Quick start
+
+1. [Install](#install) the plugin
+2. Start a Claude Code session — the SessionStart hook reports existing specs
+3. Run `/wyx:concept` to discover modules that could benefit from specs
+4. Pick a module and generate a `CONCEPT.md`
+5. From now on, boundary injection is automatic on every write
+
+> Specs are additive — the more modules you cover, the stronger the guardrails. wyx also offers `/wyx:pipeline` for data pipelines, `/wyx:sync` for coordination patterns, and `/wyx:map` to visualize how all specs relate.
+
+## Skills
+
+| Command | Produces | Purpose |
+|---------|----------|---------|
+| `/wyx:concept` | `CONCEPT.md` | Define module boundaries and detect drift |
+| `/wyx:pipeline` | `PIPELINE.md` | Specify data pipelines with quality invariants |
+| `/wyx:sync` | `SYNCS.md` | Map coordination patterns between concepts |
+| `/wyx:map` | `ARCHITECTURE.md` | Visualize all spec relationships as a Mermaid graph |
+
+### Usage examples
+
+```bash
+/wyx:concept src/payments/          # analyze existing code
+/wyx:concept Notification service   # design new module
+/wyx:concept drift src/             # detect spec-code divergence
+/wyx:concept                        # discover concept candidates
+/wyx:pipeline src/data/             # analyze data pipeline
+/wyx:sync src/syncs/                # map sync coordination
+/wyx:map                            # generate full architecture map
+```
+
+## Requirements
+
+- [Claude Code CLI](https://claude.com/claude-code) with plugin support
+- `jq` (used by hook scripts for JSON parsing; a warning is shown if missing)
+
+### From local directory
+
+Add to your project's `.claude/settings.json`:
+
+```json
+{
+  "plugins": [
+    "/path/to/wyx"
+  ]
+}
+```
+
+Or test locally:
+
+```bash
+claude --plugin-dir /path/to/wyx
+```
+
+---
+
+<details>
+<summary><strong>Session start hook</strong></summary>
+
+When a project uses wyx, a SessionStart hook automatically reports existing specs:
+
+```
+wyx artifacts: CONCEPT(2: src/lib/server/concepts/indicators/CONCEPT.md,
+  src/lib/server/concepts/prediction/CONCEPT.md)
+  PIPELINE(1: src/lib/server/concepts/sentiment/PIPELINE.md)
+  SYNCS(1: src/lib/server/syncs/SYNCS.md)
+Last drift check: 2026-02-17T10:30:00Z (1 spec(s) with drift)
+Specs modified since last drift check — consider running /wyx:concept drift
+Uncovered modules (>5 files, no CONCEPT.md): src/lib/components, src/lib/server/db/schema
+```
+
+Reports spec coverage, drift staleness, ARCHITECTURE.md freshness, and uncovered modules. Well-known non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`) are excluded. If no specs exist, it suggests running `/wyx:concept` to get started.
+
+</details>
+
+<details>
+<summary><strong>Spec placement</strong></summary>
+
+Place specs next to the implementation code they describe. The PreToolUse hook walks **upward** from the edited file and stops at the **first directory containing any spec**.
+
+```
+src/lib/
+├── orders/              # one concept = one directory
+│   ├── CONCEPT.md       # boundary declarations for this module
+│   ├── service.ts
+│   └── repository.ts
+├── scoring/
+│   ├── CONCEPT.md       # boundaries
+│   ├── PIPELINE.md      # co-located pipeline spec (safe — same directory)
+│   ├── calculate.ts
+│   └── aggregate.ts
+└── syncs/
+    ├── SYNCS.md          # single file for ALL sync flows (keep monolithic)
+    ├── order-to-inventory.ts
+    └── order-to-scoring.ts
+```
+
+**Anti-patterns to avoid:**
+- **Root-level CONCEPT.md** — becomes the fallback for all files, applying overly broad boundaries
+- **Spec in a subdirectory** — e.g. `scoring/transforms/PIPELINE.md` stops traversal at `transforms/`, hiding `scoring/CONCEPT.md`. The hook mitigates this with `[SHADOWED]` ancestor injection, but co-locating specs is preferred
+- **Splitting SYNCS.md** — the coordination graph needs a complete view; partial graphs give false confidence
+
+</details>
+
+<details>
+<summary><strong>Test results and methodology</strong></summary>
+
+Tested on 2 real projects across 6 features with a controlled baseline:
+
+| Metric | Baseline (no wyx) | With wyx |
+|--------|-------------------|----------|
+| Features with boundary violations | 33% (2/6 features) | 0% (0/6 features) |
+| Cross-module imports checked | — | 33 imports, 0 violations |
+| Statistical significance | — | p = 0.21 feature-level (N=6) |
+
+Tested with Claude-assisted development; untested with other LLMs. N=6 features, 2 projects, single developer.
+
+Additional findings:
+- Drift detection found a **real silent data loss bug** (SQL UPDATE missing 2 of 5 fields)
+- Concept specs identified **4 test gaps** that human test writers had missed
+- **8/8 skill tests passed** across both projects. Drift detection found 3 defects, 1 DRY violation, and 1 undocumented cross-concept dependency.
+
+</details>
+
+<details>
+<summary><strong>Testing the plugin</strong></summary>
+
+Test wyx against real projects using non-interactive invocations:
+
+```bash
+# Verify plugin loads and skills are discoverable
+cd /path/to/project && claude --plugin-dir /path/to/wyx -p "List wyx skills"
+
+# Test a specific skill
+cd /path/to/project && claude --plugin-dir /path/to/wyx -p "/wyx:concept drift src/lib/"
+
+# Test SessionStart hook standalone
+CLAUDE_PROJECT_DIR=/path/to/project bash scripts/session-start.sh
+```
+
+</details>
+
+## Background
+
+wyx adapts ideas from two sources for LLM-assisted development:
+
+- **WYSIWID**: Meng & Jackson, ["What You See Is What It Does"](https://arxiv.org/abs/2508.14511) (MIT, Onward! 2025) — concept specs and boundary declarations as a structural pattern for legible software.
+- **WYWIWID**: Dr. Ernie, ["What You Write Is What It Did"](https://ihack.us/2025/11/13/what-you-write-is-what-it-did-a-legible-pattern-for-structuring-software/) — evidence-based legibility via drift detection and data pipeline invariants.
+
+## Project structure
+
+```
+.claude-plugin/
+├── plugin.json              # Plugin manifest
+hooks/
+└── hooks.json               # SessionStart + PreToolUse drift context
+scripts/
+├── session-start.sh         # Artifact coverage + drift staleness + uncovered modules
+└── drift-context.sh         # Boundary injection near specs
+skills/
+├── concept/SKILL.md         # /wyx:concept — bounded concept design + drift detection
+├── map/SKILL.md             # /wyx:map — architecture visualization from specs
+├── pipeline/SKILL.md        # /wyx:pipeline — data pipeline specs with quality invariants
+└── sync/SKILL.md            # /wyx:sync — sync coordination maps
+```
+
+## License
+
+MIT
