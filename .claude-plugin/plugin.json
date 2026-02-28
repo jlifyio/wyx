@@ -1,5 +1,5 @@
 {
   "name": "wyx",
   "description": "Architecture guardrails for Claude Code — automatically injects module boundaries into Claude's context on every write",
-  "version": "0.16.0"
+  "version": "0.16.1"
 }
