@@ -100,6 +100,10 @@ ${interactions}
 ${dependencies}
 "
           fi
+          if [ -z "$interactions" ] && [ -z "$dependencies" ]; then
+            boundary_context="${boundary_context}  [${relative_spec}: no boundary declarations found]
+"
+          fi
           ;;
         *PIPELINE*)
           # Extract data boundary (access constraints, not quality invariants)

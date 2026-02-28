@@ -181,7 +181,7 @@ Tested on 2 real projects across 6 features with a controlled baseline:
 | Cross-module imports checked | — | 33 imports, 0 violations |
 | Statistical significance | — | p = 0.21 feature-level (N=6) |
 
-Tested with Claude-assisted development; untested with other LLMs. N=6 features, 2 projects, single developer.
+Tested with Claude-assisted development; untested with other LLMs. N=6 features, 2 projects, single developer. Before/after methodology — the developer's improved architectural understanding from writing specs may independently contribute to fewer violations.
 
 Additional findings:
 - Drift detection found a **real silent data loss bug** (SQL UPDATE missing 2 of 5 fields)

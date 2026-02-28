@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**wyx** is a Claude Code plugin that provides architecture guardrails for LLM-assisted development. The core mechanism: when Claude writes code near a module with a spec, the PreToolUse hook automatically injects boundary declarations into Claude's context, preventing cross-module violations.
+**wyx** is a Claude Code plugin that provides architecture guardrails for LLM-assisted development. The core mechanism: when Claude writes code near a module with a spec, the PreToolUse hook automatically injects boundary declarations into Claude's context, reducing cross-module violations.
 
 Adapts ideas from two sources:
 - **WYSIWID** (Meng & Jackson, MIT) — concept spec format and boundary declarations
@@ -126,12 +126,14 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **Matcher coverage**: PreToolUse matches `Write|Edit|NotebookEdit`. File writes via `Bash` (e.g. `echo > file`, `sed -i`) bypass the hook entirely.
 - **Spec heading format**: Some projects use capitalized headings (`## Purpose`, `## Actions`); others use lowercase (`## purpose`, `## actions`). The drift context hook handles both via fallback extraction.
 - **PreToolUse context delivery**: Uses `hookSpecificOutput.additionalContext` (structured JSON) per the official hooks reference. Boundary declarations are delivered in full without truncation — completeness is prioritized over context savings.
+- **Stale spec risk**: Outdated or incorrect specs can be worse than no specs — the hook injects boundary declarations verbatim without validation, which may guide Claude away from correct approaches toward spec-declared-but-nonexistent APIs. Run `/wyx:concept drift` regularly to catch divergence.
 - **Claude-only testing**: All testing used Claude. Other LLMs may respond differently to CONCEPT.md specs.
 
 ## Design Decisions
 
 - **Hook type: command only** — prompt hooks lack spec access, agent hooks add 10-30s latency. Command hooks extract boundaries in ~2s.
 - **No truncation**: Boundary declarations delivered in full — incomplete boundaries defeat boundary checking.
+- **No qualification**: Boundary declarations are injected without caveats like "these might be stale" — qualified boundaries defeat boundary checking (same principle as no truncation).
 - **Drift stays in `/wyx:concept`**: `/wyx:concept drift` checks all 3 spec types (CONCEPT, PIPELINE, SYNCS) including cross-spec reference validation and SYNCS graph consistency. Extracting into a separate `/wyx:drift` skill was deferred — no functional conflict yet.
 - **No plugin agents**: Isolated context is net-negative; skill namespace resolution undocumented. Drift-history + uncovered module detection implemented instead.
 - **One spec per directory**: Multi-file patterns (`CONCEPT-*.md`) were removed — they caused 83% irrelevant boundary context injection in flat directories.
@@ -141,4 +143,4 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Test Results
 
-Boundary violations: 33% → 0% (N=6 features, 2 projects).
+Boundary violations: 33% → 0% (N=6 features, 2 projects). Note: before/after methodology with the same developer writing specs and testing features — the developer's improved architectural understanding from writing specs may independently contribute to fewer violations.
