@@ -13,14 +13,14 @@ allowed-tools: Read, Glob, Grep, Write
 You are generating an **architecture map** — a synthesized view of all concept, pipeline,
 and sync specs in a project. The map shows how concepts relate to each other, where data
 flows, and which external systems are involved. It produces a single `ARCHITECTURE.md`
-with a Mermaid relationship graph, dependency matrix, and data flow paths.
+with a Mermaid relationship graph, dependency matrix, and data flow paths. ARCHITECTURE.md is a human reference document for orientation and code review — it is not consumed by wyx hooks.
 
 ## How to interpret $ARGUMENTS
 
 Determine the mode from the argument:
 
 - **Path** (e.g. `src/lib/server/`): **Scoped mode** — only map specs found under this path. Useful for mapping a subsystem without noise from unrelated modules.
-- **No arguments**: **Full project mode** — find and map all wyx specs across the entire project. This is the most common usage.
+- **No arguments**: **Full project mode** — find and map all wyx specs across the entire project. This is the most common usage. For projects with 15+ concepts, recommend scoped mode to keep the graph readable.
 - **Zero specs found**: Output "No wyx specs found. Run `/wyx:concept` first to create your first spec." and stop.
 
 ## Step 1: Discover All Specs
@@ -108,13 +108,14 @@ graph TB
 
 ## data flow paths
 
-**[Path name]:** Concept1 -> Concept2 -> Concept3
-**[Path name]:** Concept4 -> Concept5
+**[Business flow description]:** Concept1 -> Concept2 -> Concept3 — [one-line summary of what this path does end-to-end]
+**[Business flow description]:** Concept4 -> Concept5 — [one-line summary]
 
 ## coverage
 
-- Specced modules: [list directories containing specs]
-- Uncovered modules: [directories with >5 files lacking any spec]
+- **12/18 modules specced (67%)**
+- Specced: `src/lib/auth/CONCEPT.md`, `src/lib/data/PIPELINE.md`, ...
+- Uncovered: `src/lib/notifications/`, `src/lib/billing/`, ...
 ````
 
 ## Output Stability Rules
@@ -156,6 +157,7 @@ These are intentional design choices, not parser limitations:
 1. Write the `ARCHITECTURE.md` file immediately (it is fully derived and always regenerable)
 2. Present a brief summary: node count, edge count, key patterns observed, and coverage stats
 3. If `ARCHITECTURE.md` already exists, overwrite it — no confirmation needed
+4. Note: Mermaid graphs render visually on GitHub and VS Code; in terminal they appear as raw text (still human-parseable)
 
 ## Relationship to Other wyx Skills
 
