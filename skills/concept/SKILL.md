@@ -65,7 +65,7 @@ Write scenarios that define correct behavior. Multiple scenarios OK.]
 
 ## Design Rules
 
-Apply these four rules when generating or reviewing a concept spec:
+Apply these five rules when generating or reviewing a concept spec:
 
 1. **Single purpose**: Each concept serves exactly one user-facing purpose. If you find yourself writing "and" in the purpose, consider splitting.
 
@@ -74,6 +74,8 @@ Apply these four rules when generating or reviewing a concept spec:
 3. **State ownership**: Each piece of state belongs to exactly one concept. No shared mutable state between concepts. If two concepts need the same data, one owns it and the other queries it through an action.
 
 4. **Actions as interface**: All external access to a concept goes through its declared actions. No reaching into internal implementation details.
+
+5. **Actions as declarations, not events**: Actions define what the module can do, not what happens when it runs. Do not derive runtime infrastructure (logging, metrics, interceptors, middleware) from action declarations. Cross-cutting infrastructure that wraps multiple concepts should be its own concept with its own spec.
 
 ## Retrofit Mode Guidelines
 
