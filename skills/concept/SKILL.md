@@ -84,7 +84,7 @@ When analyzing existing code:
 1. Read the directory structure, exports, and key files
 2. Identify the implicit purpose (what does this module do?)
 3. Map existing functions/methods to actions
-4. Identify state (what data does this module own?)
+4. Identify state (what data does this module own?). Check whether any state overlaps with state already declared in other CONCEPT.md files — flag overlaps as potential Rule 3 violations.
 5. Write an operational principle based on how the code is actually used
 6. **Compress common parameters**: When a parameter appears in most or all actions (e.g. `modified_by: string`), declare it once at the top of `## actions` as a common parameter rather than repeating in each action signature
 7. **Focus on public contract**: When listing state fields, focus on fields that define the concept's public contract. Omit obvious implementation details (private caches, internal indices, session-local temporaries) — these are flagged as Low severity if discovered during drift detection (see Drift calibration)
