@@ -1,6 +1,6 @@
 # wyx
 
-[![Version](https://img.shields.io/badge/version-0.16.5-blue)](https://github.com/jlifyio/wyx/releases/tag/v0.16.5) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-orange)](https://claude.com/claude-code)
+[![Version](https://img.shields.io/badge/version-0.16.6-blue)](https://github.com/jlifyio/wyx/releases/tag/v0.16.6) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-orange)](https://claude.com/claude-code)
 
 **Architecture guardrails for Claude Code** — teach Claude your module boundaries. wyx automatically injects them into Claude's context on every write.
 
