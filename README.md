@@ -35,6 +35,8 @@ You write a short spec describing your module boundaries. wyx injects those boun
 /plugin install wyx@jlifyio
 ```
 
+Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support and `jq` for JSON parsing.
+
 > **Try it in 2 minutes** â€” clone the [wyx-example](https://github.com/jlifyio/wyx-example) repo, a small e-commerce project with pre-written specs and intentional drift to discover.
 
 ## How it works
@@ -108,12 +110,8 @@ Both rely on Claude choosing to comply. The difference is timing and targeting â
 /wyx:map                            # generate full architecture map
 ```
 
-## Requirements
-
-- [Claude Code CLI](https://claude.com/claude-code) with plugin support
-- `jq` (used by hook scripts for JSON parsing; a warning is shown if missing)
-
-### From local directory
+<details>
+<summary><strong>Install from local directory</strong></summary>
 
 Add to your project's `.claude/settings.json`:
 
@@ -131,7 +129,7 @@ Or test locally:
 claude --plugin-dir /path/to/wyx
 ```
 
----
+</details>
 
 <details>
 <summary><strong>Session start hook</strong></summary>
@@ -182,7 +180,7 @@ src/lib/
 
 </details>
 
-<details>
+<details id="test-results-and-methodology">
 <summary><strong>Test results and methodology</strong></summary>
 
 Tested on 2 real projects across 6 features with a controlled baseline:
