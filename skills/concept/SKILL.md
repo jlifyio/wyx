@@ -4,7 +4,7 @@ description: >
   Generate bounded wyx concept specs (CONCEPT.md), update existing specs, or detect
   spec-code drift. Use for module design, boundary review, or drift checking.
 argument-hint: "e.g. src/lib/auth/, Payment processing, drift src/lib/, or leave empty to discover"
-allowed-tools: Read, Glob, Grep, Write, Edit
+allowed-tools: Read, Glob, Grep, Write, Edit, Agent
 ---
 
 # Bounded Concept Design
@@ -139,6 +139,14 @@ When `$ARGUMENTS` starts with `drift`, scan for spec-code divergence.
 2. **For each spec**: Read the spec AND the corresponding implementation code
 3. **Compare**: Check for divergence in each category (see below)
 4. **Report**: Produce a structured drift report
+
+### Parallel scanning
+
+When 3+ specs are found, use `Agent` with `subagent_type: "Explore"` to scan specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable) — safe for drift analysis.
+
+- Spawn one Explore agent per spec (or group of 2-3 nearby specs)
+- Each agent reads the spec + implementation code and returns findings in the drift report format (category, severity, file:line, description)
+- After all agents complete, merge findings into a single drift report, then run cross-spec validation and systemic pattern aggregation in the main context
 
 ### What to check for each CONCEPT.md
 

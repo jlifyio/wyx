@@ -5,7 +5,7 @@ description: >
   all wyx specs. Reads CONCEPT.md, PIPELINE.md, and SYNCS.md to produce a
   Mermaid graph with dependency matrix and data flow paths.
 argument-hint: "e.g. src/lib/ to map a subtree, or leave empty for full project"
-allowed-tools: Read, Glob, Grep, Write
+allowed-tools: Read, Glob, Grep, Write, Agent
 ---
 
 # Architecture Map Generation
@@ -28,6 +28,14 @@ Determine the mode from the argument:
 1. Glob for `**/CONCEPT.md`, `**/PIPELINE.md`, and `**/SYNCS.md` (scoped to path if given)
 2. Read every spec found
 3. Build an inventory: for each spec, record its type, name, directory, and key sections
+
+### Parallel reading
+
+When 5+ specs are found, use `Agent` with `subagent_type: "Explore"` to read specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable).
+
+- Spawn one Explore agent per 3-5 specs grouped by directory proximity
+- Each agent reads the specs and returns: type, name, directory, and key sections (interactions, dependencies, data boundary, coordination graph)
+- After all agents complete, merge the inventory in the main context and proceed to Step 2
 
 ## Step 2: Extract Relationships
 

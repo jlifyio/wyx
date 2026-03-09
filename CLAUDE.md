@@ -135,7 +135,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **No truncation**: Boundary declarations delivered in full — incomplete boundaries defeat boundary checking.
 - **No qualification**: Boundary declarations are injected without caveats like "these might be stale" — qualified boundaries defeat boundary checking (same principle as no truncation).
 - **Drift stays in `/wyx:concept`**: `/wyx:concept drift` checks all 3 spec types (CONCEPT, PIPELINE, SYNCS) including cross-spec reference validation and SYNCS graph consistency. Extracting into a separate `/wyx:drift` skill was deferred — no functional conflict yet.
-- **No plugin agents**: Isolated context is net-negative; skill namespace resolution undocumented. Drift-history + uncovered module detection implemented instead.
+- **Read-only subagents only**: Concept drift and map generation use Explore-type subagents (structurally read-only — Write/Edit unavailable) for parallel scanning. Full plugin agents (with write access or isolated context) remain excluded.
 - **One spec per directory**: Multi-file patterns (`CONCEPT-*.md`) were removed — they caused 83% irrelevant boundary context injection in flat directories.
 - **No SYNCS.md splitting**: The `## coordination graph` requires a complete view of all sync flows; partial graphs give false confidence.
 - **Integration is a platform constraint**: The 4 skills operate independently (no skill-to-skill invocation in Claude Code). This is structural, not a bug.
