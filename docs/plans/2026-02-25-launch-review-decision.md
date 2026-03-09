@@ -61,5 +61,5 @@ Mermaid for v1 (3-0 consensus). Screenshots/GIF deferred to post-launch.
 
 ## Pre-Launch Blockers (still open)
 
-- [ ] Verify `/plugin marketplace add jlifyio/wyx` actually works
+- [ ] Verify `/plugin marketplace add jlifyio/claude-plugins` and `/plugin install wyx@jlifyio` work
 - [ ] Have someone other than the author clone and run wyx-example end-to-end
