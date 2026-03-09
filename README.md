@@ -134,10 +134,10 @@ wyx artifacts: CONCEPT(2: src/lib/server/concepts/indicators/CONCEPT.md,
   SYNCS(1: src/lib/server/syncs/SYNCS.md)
 Last drift check: 2026-02-17T10:30:00Z (1 spec(s) with drift)
 Specs modified since last drift check — consider running /wyx:concept drift
-Uncovered modules (>5 files, no CONCEPT.md): src/lib/components, src/lib/server/db/schema
+Uncovered modules (>2 files, no CONCEPT.md): src/lib/components, src/lib/server/db/schema
 ```
 
-Reports spec coverage, drift staleness, ARCHITECTURE.md freshness, and uncovered modules. Well-known non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`) are excluded. If no specs exist, it suggests running `/wyx:concept` to get started.
+Reports spec coverage, drift staleness, ARCHITECTURE.md freshness, and uncovered modules (directories with >2 source files but no CONCEPT.md). Well-known non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`) are excluded. If no specs exist, it suggests running `/wyx:concept` to get started.
 
 </details>
 

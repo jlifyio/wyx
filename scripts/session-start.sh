@@ -134,12 +134,12 @@ if [ "$concept_count" -gt 0 ]; then
       file_count=$(find "$d" -maxdepth 1 -type f \
         -not -name '.*' -not -name '*.lock' -not -name '*.log' \
         2>/dev/null | wc -l | tr -d ' ')
-      if [ "$file_count" -gt 5 ]; then
+      if [ "$file_count" -gt 2 ]; then
         printf '%s\n' "$d"
       fi
     done | sort)
   if [ -n "$uncovered" ]; then
-    echo "Uncovered modules (>5 files, no CONCEPT.md): $uncovered"
+    echo "Uncovered modules (>2 files, no CONCEPT.md): $uncovered"
   fi
 fi
 
