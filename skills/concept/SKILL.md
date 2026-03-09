@@ -135,7 +135,7 @@ When `$ARGUMENTS` starts with `drift`, scan for spec-code divergence.
 
 ### How it works
 
-1. **Find all specs**: Locate all `CONCEPT.md`, `PIPELINE.md`, and `SYNCS.md` files in the target path (or entire project if no path given)
+1. **Find all specs**: Locate all `CONCEPT.md`, `PIPELINE.md`, and `SYNCS.md` files in the target path (or entire project if no path given). When scoped to a path, also search for dependent specs outside the scope: walk upward from the target path for ancestor specs, and find any `SYNCS.md` or `PIPELINE.md` elsewhere that reference concepts within the target path. This ensures cross-spec validation remains complete even in scoped mode.
 2. **For each spec**: Read the spec AND the corresponding implementation code
 3. **Compare**: Check for divergence in each category (see below)
 4. **Report**: Produce a structured drift report

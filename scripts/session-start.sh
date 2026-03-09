@@ -84,6 +84,19 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
     if [ -n "$newer_than_drift" ]; then
       echo "Specs modified since last drift check — consider running /wyx:concept drift"
     fi
+    # Report code directories modified since last drift check
+    changed_dirs=$(find "$PROJECT_DIR" -type f \
+      \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" -o -name "*.svelte" -o -name "*.vue" \) \
+      -newer "$drift_history" \
+      -not -path '*/node_modules/*' -not -path '*/.git/*' \
+      -not -path '*/dist/*' -not -path '*/build/*' \
+      -not -path '*/.next/*' -not -path '*/vendor/*' \
+      -not -path '*/.venv/*' -not -path '*/venv/*' \
+      2>/dev/null | xargs -r dirname 2>/dev/null | sort -u | sed "s|^$PROJECT_DIR/||" | head -5)
+    if [ -n "$changed_dirs" ]; then
+      changed_list=$(echo "$changed_dirs" | tr '\n' ',' | sed 's/,$//')
+      echo "Code modified since last drift: $changed_list"
+    fi
   fi
 fi
 
