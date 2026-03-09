@@ -54,3 +54,13 @@ echo '{"tool_name":"Write","tool_input":{"file_path":"/path/to/project/src/modul
 - Shell scripts handle relative paths, CRLF line endings, and missing jq gracefully
 
 Keep changes minimal and focused. One feature or fix per PR.
+
+## Shell Script Conventions
+
+See [CLAUDE.md](CLAUDE.md#shell-script-conventions) for detailed patterns (trailing slash stripping, CRLF handling, case-insensitive extraction). These patterns are critical for correctness.
+
+## Project Notes
+
+- The plugin marketplace is hosted separately at [jlifyio/claude-plugins](https://github.com/jlifyio/claude-plugins)
+- Version is managed in `.claude-plugin/plugin.json` only
+- PreToolUse hook outputs structured JSON (`hookSpecificOutput.additionalContext`) — verify this format when testing hook changes

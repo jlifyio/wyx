@@ -26,7 +26,7 @@ graph LR
 
 You write a short spec describing your module boundaries. wyx injects those boundaries into Claude's context on every write — Claude sees them and self-checks before each edit.
 
-**In testing (N=6 features, 2 projects):** 33 cross-module imports checked, 0 violations. Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
+**In testing (N=6 features, 2 projects):** 33 cross-module imports checked, 0 violations. Small sample — see [methodology](#test-results-and-methodology) for caveats. Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
 
 ## Install
 
@@ -69,12 +69,23 @@ You write a short spec describing your module boundaries. wyx injects those boun
 ## Quick start
 
 1. [Install](#install) the plugin
-2. Start a Claude Code session — the SessionStart hook reports existing specs
-3. Run `/wyx:concept` to discover modules that could benefit from specs
-4. Pick a module and generate a `CONCEPT.md`
-5. From now on, boundary injection is automatic on every write
+2. Start a Claude Code session — wyx reports existing specs automatically
+3. Run `/wyx:concept src/your-module/` to generate a spec for an existing module
+4. Edit any file in that module — wyx injects boundaries into Claude's context
+5. Run `/wyx:concept drift` to check for spec-code divergence
 
-> Specs are additive — the more modules you cover, the stronger the guardrails. wyx also offers `/wyx:pipeline` for data pipelines, `/wyx:sync` for coordination patterns, and `/wyx:map` to visualize how all specs relate.
+> Start with one module. Specs are additive — the more modules you cover, the stronger the guardrails. wyx also offers `/wyx:pipeline` for data pipelines, `/wyx:sync` for coordination patterns, and `/wyx:map` to visualize how all specs relate.
+
+## Why not just CLAUDE.md rules?
+
+| | CLAUDE.md rules | wyx |
+|---|---|---|
+| **Delivery** | Loaded in system context, project-wide | Injected per-write, module-specific |
+| **Specificity** | Project-wide guidelines | Per-module boundary declarations |
+| **Staleness** | No warning when rules diverge from code | Drift detection catches divergence |
+| **Colocation** | Separate from implementation | Specs live next to the code they describe |
+
+Both rely on Claude choosing to comply. The difference is timing and targeting — wyx puts boundaries in context at the moment Claude writes, not pages of context away.
 
 ## Skills
 
@@ -206,6 +217,26 @@ cd /path/to/project && claude --plugin-dir /path/to/wyx -p "/wyx:concept drift s
 # Test SessionStart hook standalone
 CLAUDE_PROJECT_DIR=/path/to/project bash scripts/session-start.sh
 ```
+
+</details>
+
+<details>
+<summary><strong>FAQ</strong></summary>
+
+**Q: What if `jq` is missing?**
+wyx warns at session start. Install from [jqlang.github.io](https://jqlang.github.io/jq/download/). Without jq, boundary injection is disabled.
+
+**Q: Does wyx block bad code?**
+No. wyx injects boundary context — Claude sees it and self-checks. It's advisory, not enforcement. In testing with Opus-class models, compliance was consistent.
+
+**Q: Does wyx catch writes via Bash (`echo > file`, `sed -i`)?**
+No. The hook matches Write, Edit, and NotebookEdit only. File modifications through Bash bypass the hook entirely.
+
+**Q: Can I use wyx with other LLMs?**
+Currently tested with Claude only. The plugin mechanism is Claude Code-specific.
+
+**Q: How many specs do I need to start?**
+One. Start with the module where Claude most often violates boundaries. Each additional spec narrows the remaining gap.
 
 </details>
 

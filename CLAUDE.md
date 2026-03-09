@@ -143,4 +143,4 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Test Results
 
-Boundary violations: 33% → 0% (N=6 features, 3 projects). Note: before/after methodology with the same developer writing specs and testing features — the developer's improved architectural understanding from writing specs may independently contribute to fewer violations. Redundant data store anti-pattern found in 3/3 audited projects (all logger modules lacked CONCEPT.md) — addressed by Design Rule 5 and Retrofit step 4 state overlap check in v0.16.3.
+Boundary violations: 33% → 0% (N=6 features, 2 projects). Drift and coverage additionally validated on a third project (WineLevel3, 10 concepts). Before/after methodology — developer learning from spec-writing may confound. Redundant data store anti-pattern found in 3/3 audited projects — addressed by Design Rule 5 and Retrofit step 4 in v0.16.3.

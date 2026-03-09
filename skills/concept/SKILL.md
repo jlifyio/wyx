@@ -81,7 +81,7 @@ Apply these five rules when generating or reviewing a concept spec:
 
 When analyzing existing code:
 
-1. Read the directory structure, exports, and key files
+1. Read the directory structure, exports, and key files. Grep for all import/require/use statements to build a dependency map — list every external module imported and cross-reference against existing CONCEPT.md files to identify which imports cross concept boundaries.
 2. Identify the implicit purpose (what does this module do?)
 3. Map existing functions/methods to actions
 4. Identify state (what data does this module own?). Check whether any state overlaps with state already declared in other CONCEPT.md files — flag overlaps as potential Rule 3 violations.
@@ -89,7 +89,7 @@ When analyzing existing code:
 6. **Compress common parameters**: When a parameter appears in most or all actions (e.g. `modified_by: string`), declare it once at the top of `## actions` as a common parameter rather than repeating in each action signature
 7. **Focus on public contract**: When listing state fields, focus on fields that define the concept's public contract. Omit obvious implementation details (private caches, internal indices, session-local temporaries) — these are flagged as Low severity if discovered during drift detection (see Drift calibration)
 8. **Flag violations**: List any boundary violations found:
-   - Cross-module internal imports
+   - Cross-module internal imports (imports reaching into another concept's internal files rather than its public API)
    - Shared mutable state
    - Functions that serve multiple unrelated purposes
    - State that belongs to a different concept
@@ -257,8 +257,9 @@ Systemic patterns suggest cross-cutting concerns rather than individual spec dri
 **Phase 3 — Record drift history:**
 5. Append a summary entry to `.claude/wyx-drift-history.jsonl`:
 ```json
-{"ts":"<ISO-8601>","specs_scanned":<N>,"specs_with_drift":<N>,"critical":<N>,"high":<N>,"medium":<N>,"low":<N>,"path":"<scanned-path-or-project>"}
+{"ts":"<ISO-8601>","specs_scanned":<N>,"specs_with_drift":<N>,"critical":<N>,"high":<N>,"medium":<N>,"low":<N>,"low_by_spec":{"path/CONCEPT.md":<N>},"path":"<scanned-path-or-project>"}
 ```
+The `low_by_spec` field tracks per-spec Low counts for accumulation trending. When comparing against previous entries, flag specs whose Low count increased — accumulating Lows suggest the spec's public surface description is falling behind implementation growth.
 This enables the SessionStart hook to report when drift was last checked.
 
 ## When Updating an Existing Concept

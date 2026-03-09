@@ -78,8 +78,8 @@ git clone https://github.com/jlifyio/wyx-example
 cd wyx-example
 
 # 2. Install wyx (in Claude Code)
-/plugin marketplace add jlifyio/wyx
-/plugin install wyx@wyx
+/plugin marketplace add jlifyio/claude-plugins
+/plugin install wyx@jlifyio
 
 # 3. Start a Claude Code session — wyx reports spec coverage automatically:
 #    wyx artifacts: CONCEPT(3: orders, inventory, payments) | Uncovered: notifications
@@ -117,7 +117,7 @@ Tested on 2 real projects across 6 features:
 - **4 test gaps** identified from concept spec analysis
 - **8/8 skill tests passed** across both projects
 
-The sample size is small (N=6 features, p=0.21 feature-level), and testing was limited to Claude Code with a single developer. But the practical results — zero violations, real bugs found — speak for themselves.
+The sample is small (N=6, p=0.21), but in practice: zero violations across 33 imports, and drift detection found a real data loss bug that tests missed.
 
 ## How it's different
 
@@ -132,8 +132,8 @@ wyx adapts ideas from [WYSIWID](https://arxiv.org/abs/2508.14511) (Meng & Jackso
 ## Get started
 
 ```bash
-/plugin marketplace add jlifyio/wyx
-/plugin install wyx@wyx
+/plugin marketplace add jlifyio/claude-plugins
+/plugin install wyx@jlifyio
 ```
 
 - **GitHub**: [jlifyio/wyx](https://github.com/jlifyio/wyx)

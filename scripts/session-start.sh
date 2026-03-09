@@ -114,7 +114,7 @@ if [ -f "$PROJECT_DIR/ARCHITECTURE.md" ]; then
   fi
 fi
 
-# Suggest uncovered modules (directories with >5 source files but no CONCEPT.md)
+# Suggest uncovered modules (directories with >2 source files but no CONCEPT.md)
 if [ "$concept_count" -gt 0 ]; then
   uncovered=""
   while IFS= read -r dir; do

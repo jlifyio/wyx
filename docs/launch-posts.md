@@ -55,8 +55,8 @@ Result (N=6 features, 2 projects): 33 imports checked, 0 violations. And drift d
 
 **Install:**
 ```
-/plugin marketplace add jlifyio/wyx
-/plugin install wyx@wyx
+/plugin marketplace add jlifyio/claude-plugins
+/plugin install wyx@jlifyio
 ```
 
 **Honest caveats:**
@@ -133,7 +133,7 @@ My test suite caught zero of these.
 Try it in 2 minutes:
 
 1. git clone https://github.com/jlifyio/wyx-example
-2. Install: /plugin marketplace add jlifyio/wyx
+2. Install: /plugin marketplace add jlifyio/claude-plugins
 3. Run: /wyx:concept drift src/
 
 The example project has intentional drift for you to discover.
