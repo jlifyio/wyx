@@ -179,6 +179,7 @@ When `$ARGUMENTS` starts with `drift`, scan for spec-code divergence.
 - State fields that are implementation details (private variables, internal caches, derived computed values) rather than part of the concept's public API contract should be flagged as Low severity.
 - Private helper methods or internal implementation functions (not exported, not called from outside the module) that appear as "Missing action" findings should be treated as Low severity — these are implementation details, not part of the concept's public API contract.
 - Before reporting a finding as Medium or higher, verify it exists in the current code with grep or file read. Do not report drift based on memory or assumptions from prior file reads.
+- If a single spec accumulates more than 5 Low findings, note this in the drift report summary and suggest re-evaluating whether the spec's `## actions` or `## state` adequately describes the module's current public surface.
 
 ### Drift Report Format
 
@@ -190,7 +191,7 @@ Present the report as:
 ## Summary
 - Specs scanned: [N]
 - Specs with drift: [N]
-- Critical: [N] | High: [N] | Medium: [N]
+- Critical: [N] | High: [N] | Medium: [N] | Low: [N]
 
 ## [Concept/Pipeline Name] — [path/to/CONCEPT.md]
 
@@ -256,7 +257,7 @@ Systemic patterns suggest cross-cutting concerns rather than individual spec dri
 **Phase 3 — Record drift history:**
 5. Append a summary entry to `.claude/wyx-drift-history.jsonl`:
 ```json
-{"ts":"<ISO-8601>","specs_scanned":<N>,"specs_with_drift":<N>,"critical":<N>,"high":<N>,"medium":<N>,"path":"<scanned-path-or-project>"}
+{"ts":"<ISO-8601>","specs_scanned":<N>,"specs_with_drift":<N>,"critical":<N>,"high":<N>,"medium":<N>,"low":<N>,"path":"<scanned-path-or-project>"}
 ```
 This enables the SessionStart hook to report when drift was last checked.
 
