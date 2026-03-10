@@ -66,7 +66,7 @@ This is a plugin repository. There is no build step, test suite, or package.json
 
 **Editing skills**: Each SKILL.md is self-contained. Edit the markdown body for behavior changes; edit YAML frontmatter for metadata (name, description, argument-hint, allowed-tools).
 
-**Version**: Update in `.claude-plugin/plugin.json` only. The marketplace ([jlifyio/claude-plugins](https://github.com/jlifyio/claude-plugins)) does not duplicate the version — plugin.json is the authority per official docs.
+**Version**: Update in `.claude-plugin/plugin.json` only. The marketplace ([jlifyio/claude-plugins](https://github.com/jlifyio/claude-plugins)) does not duplicate the version — plugin.json is the authority per official docs. Use `/wyx-release X.Y.Z` to bump version across all files, commit, tag, push, and create a GitHub release.
 
 **Plugin structure rules**:
 - `plugin.json` goes inside `.claude-plugin/`
