@@ -154,7 +154,7 @@ Reports spec coverage, drift staleness, code changes since last drift, ARCHITECT
 <details>
 <summary><strong>Spec placement</strong></summary>
 
-Place specs next to the implementation code they describe. The PreToolUse hook walks **upward** from the edited file and stops at the **first directory containing any spec**.
+Place specs next to the implementation code they describe. The PreToolUse hook walks **upward** from the edited file and stops at the **first directory containing CONCEPT.md or PIPELINE.md** (boundary-contributing specs). SYNCS.md is listed in context but does not stop traversal.
 
 ```
 src/lib/
@@ -175,7 +175,7 @@ src/lib/
 
 **Anti-patterns to avoid:**
 - **Root-level CONCEPT.md** — becomes the fallback for all files, applying overly broad boundaries
-- **Spec in a subdirectory** — e.g. `scoring/transforms/PIPELINE.md` stops traversal at `transforms/`, hiding `scoring/CONCEPT.md`. The hook mitigates this with `[SHADOWED]` ancestor injection, but co-locating specs is preferred
+- **PIPELINE.md in a subdirectory without CONCEPT.md** — e.g. `scoring/transforms/PIPELINE.md` stops traversal at `transforms/`, but the hook detects the missing CONCEPT.md and injects ancestor boundaries with a `[SHADOWED]` caveat. Co-locating specs is still preferred
 - **Splitting SYNCS.md** — the coordination graph needs a complete view; partial graphs give false confidence
 
 </details>

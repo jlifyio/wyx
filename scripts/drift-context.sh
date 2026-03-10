@@ -1,9 +1,10 @@
 #!/bin/bash
 # wyx drift context — PreToolUse hook for Write|Edit
-# When a file is written near a CONCEPT.md, PIPELINE.md, or SYNCS.md,
-# outputs spec context including boundary declarations so the LLM can
-# self-check boundary compliance. This replaces aspirational CLAUDE.md
-# rules with a mechanical checkpoint.
+# When a file is written near a CONCEPT.md or PIPELINE.md, outputs spec
+# context including boundary declarations so the LLM can self-check
+# boundary compliance. SYNCS.md is listed in spec context but does not
+# stop traversal or inject boundaries. This replaces aspirational
+# CLAUDE.md rules with a mechanical checkpoint.
 
 set -euo pipefail
 
@@ -50,6 +51,7 @@ extract_section() {
 # Search upward from file's directory for wyx spec files
 dir=$(dirname "$file_path")
 found_specs=""
+found_concept=false
 spec_context=""
 boundary_context=""
 
@@ -60,6 +62,8 @@ while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
     *) break ;;
   esac
 
+  # SYNCS.md is recognized for spec_context listing but does not stop traversal
+  # (it contributes no boundary context — only CONCEPT.md and PIPELINE.md do)
   for spec in "$dir"/CONCEPT.md "$dir"/PIPELINE.md "$dir"/SYNCS.md; do
     if [ -f "$spec" ]; then
       relative_spec="${spec#"$PROJECT_DIR"/}"
@@ -81,6 +85,7 @@ while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
       # Extract boundary declarations from CONCEPT.md and PIPELINE.md files
       case "$spec" in
         *CONCEPT*)
+          found_concept=true
           interactions=$(extract_section "$spec" "interactions")
           if [ -z "$interactions" ]; then
             interactions=$(extract_section "$spec" "Interactions")
@@ -121,17 +126,18 @@ ${data_boundary}
     fi
   done
 
-  # Stop at the first directory with any spec
-  if [ -n "$found_specs" ]; then
+  # Stop at the first directory with a boundary-contributing spec (CONCEPT.md or PIPELINE.md).
+  # SYNCS.md alone does not stop traversal — it contributes no boundary context.
+  if [ -f "$dir/CONCEPT.md" ] || [ -f "$dir/PIPELINE.md" ]; then
     break
   fi
   dir=$(dirname "$dir")
 done
 
-# DX-1: If specs found but no boundary context (shadowing case — PIPELINE.md or SYNCS.md
-# stopped traversal without a co-located CONCEPT.md), look for ancestor CONCEPT.md
-# and inject its boundaries with a caveat note
-if [ -n "$found_specs" ] && [ -z "$boundary_context" ]; then
+# DX-1: If boundary-contributing specs found but no co-located CONCEPT.md, look for
+# ancestor CONCEPT.md and inject its boundaries with a caveat note.
+# This covers: PIPELINE.md-only directories (data boundary present but no interactions).
+if [ -n "$found_specs" ] && [ "$found_concept" = false ]; then
   ancestor_dir=$(dirname "$dir")
   while [ "$ancestor_dir" != "/" ] && [ "$ancestor_dir" != "." ]; do
     case "$ancestor_dir/" in
