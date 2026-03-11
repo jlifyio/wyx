@@ -72,11 +72,12 @@ Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support a
 
 1. [Install](#install) the plugin
 2. Start a Claude Code session — wyx reports existing specs automatically
-3. Run `/wyx:concept src/your-module/` to generate a spec for an existing module
-4. Edit any file in that module — wyx injects boundaries into Claude's context
-5. Run `/wyx:concept drift` to check for spec-code divergence
+3. Run `/wyx:audit` to scan the project and get a prioritized list of commands
+4. Run `/wyx:concept src/your-module/` to generate a spec for an existing module
+5. Edit any file in that module — wyx injects boundaries into Claude's context
+6. Run `/wyx:concept drift` to check for spec-code divergence
 
-> Start with one module. Specs are additive — the more modules you cover, the stronger the guardrails. wyx also offers `/wyx:pipeline` for data pipelines, `/wyx:sync` for coordination patterns, and `/wyx:map` to visualize how all specs relate.
+> Start with one module, or run `/wyx:audit` to see which modules need specs most. Specs are additive — the more modules you cover, the stronger the guardrails. wyx also offers `/wyx:pipeline` for data pipelines, `/wyx:sync` for coordination patterns, and `/wyx:map` to visualize how all specs relate.
 
 ## Why not just CLAUDE.md rules?
 
@@ -93,6 +94,7 @@ Both rely on Claude choosing to comply. The difference is timing and targeting �
 
 | Command | Produces | Purpose |
 |---------|----------|---------|
+| `/wyx:audit` | Action plan | Scan project for coverage gaps, suggest commands to run |
 | `/wyx:concept` | `CONCEPT.md` | Define module boundaries and detect drift |
 | `/wyx:pipeline` | `PIPELINE.md` | Specify data pipelines with quality invariants |
 | `/wyx:sync` | `SYNCS.md` | Map coordination patterns between concepts |
@@ -101,6 +103,7 @@ Both rely on Claude choosing to comply. The difference is timing and targeting �
 ### Usage examples
 
 ```bash
+/wyx:audit                           # scan project, get prioritized TODO list
 /wyx:concept src/payments/          # analyze existing code
 /wyx:concept Notification service   # design new module
 /wyx:concept drift src/             # detect spec-code divergence
@@ -256,6 +259,7 @@ scripts/
 ├── session-start.sh         # Artifact coverage + drift staleness + uncovered modules
 └── drift-context.sh         # Boundary injection near specs
 skills/
+├── audit/SKILL.md           # /wyx:audit — project audit & command planner
 ├── concept/SKILL.md         # /wyx:concept — bounded concept design + drift detection
 ├── map/SKILL.md             # /wyx:map — architecture visualization from specs
 ├── pipeline/SKILL.md        # /wyx:pipeline — data pipeline specs with quality invariants
