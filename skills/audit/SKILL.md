@@ -4,7 +4,7 @@ description: >
   Scan project for wyx spec coverage gaps, detect pipeline/sync candidates,
   and output a prioritized TODO list of individual wyx skill commands.
 argument-hint: "e.g. src/lib/ to scope subtree, or leave empty for full project"
-allowed-tools: Read, Glob, Grep, Agent
+allowed-tools: Read, Glob, Grep
 ---
 
 # Project Audit & Command Planner
@@ -12,7 +12,7 @@ allowed-tools: Read, Glob, Grep, Agent
 Scan project for wyx spec coverage and generate a prioritized action plan.
 You do NOT generate specs — you identify what needs specs and output commands to run.
 Unlike SessionStart (which reports counts), this adds: pattern-based pipeline/sync
-candidate detection, dependency-ordered command sequences, and staleness checks.
+candidate detection and dependency-ordered command sequences.
 
 ## How to interpret $ARGUMENTS
 
@@ -30,10 +30,15 @@ Read each spec's first heading to extract the concept/pipeline/sync name.
 
 ## Step 2: Identify Uncovered Modules
 
-Find directories with 3+ source files (`.ts`, `.js`, `.svelte`, `.py`, `.rs`, `.go`,
-`.java`, `.jl`) lacking a colocated CONCEPT.md. Exclude: `tests/`, `test/`, `docs/`,
-`migrations/`, `node_modules/`, `.git/`, `dist/`, `build/`, `components/ui/`,
-`__pycache__/`, `.svelte-kit/`, `target/`, `.claude/`.
+Find directories with 3+ source files (`.ts`, `.js`, `.tsx`, `.jsx`, `.svelte`, `.vue`,
+`.py`, `.rs`, `.go`, `.java`, `.jl`) lacking a colocated CONCEPT.md. Exclude: `tests/`,
+`test/`, `docs/`, `migrations/`, `node_modules/`, `.git/`, `dist/`, `build/`,
+`components/ui/`, `__pycache__/`, `.svelte-kit/`, `target/`, `.claude/`,
+`types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`.
+
+Before flagging a directory, evaluate for behavioral cohesion — directories containing
+only type definitions, stateless utility functions, thin store wrappers, or schema
+definitions rarely warrant concept specs (no state ownership + actions + operational principle).
 
 ## Step 3: Detect Pipeline Candidates
 
@@ -55,18 +60,7 @@ Search for cross-concept coordination patterns:
 
 Sync candidate = handler coordinating actions across 2+ concepts.
 
-## Step 5: Parallel Scanning (5+ uncovered modules)
-
-When the project has 5+ uncovered modules, dispatch 3 Agent subagents
-(subagent_type: "Explore") in parallel for Steps 2-4:
-
-1. **Concept scanner**: identify uncovered modules, note import relationships
-2. **Pipeline scanner**: grep for data transformation patterns
-3. **Sync scanner**: grep for cross-concept coordination patterns
-
-Merge results before proceeding to Step 6. For smaller projects, run sequentially.
-
-## Step 6: Determine Priority Order
+## Step 5: Determine Priority Order
 
 Order uncovered modules by dependency depth:
 1. Find import/require statements in each uncovered module
@@ -78,19 +72,18 @@ Order uncovered modules by dependency depth:
 Pipeline candidates come after the concepts that own their source data.
 Sync candidates come after the concepts they coordinate.
 
-## Step 7: Output Action Plan
+## Step 6: Output Action Plan
 
 Present in this exact format:
 
 ### Existing Specs ({N} found)
 
-| Spec | Type | Staleness |
-|------|------|-----------|
-| `path/CONCEPT.md` | concept | ⚠️ Code modified since spec — suggest `/wyx:concept drift path/` |
-| `path/PIPELINE.md` | pipeline | ✓ Current |
+| Spec | Type |
+|------|------|
+| `path/CONCEPT.md` | concept |
+| `path/PIPELINE.md` | pipeline |
 
-For staleness: compare spec path's sibling code files. If any source file
-in the same directory has a newer mtime than the spec, flag as potentially stale.
+Run `/wyx:concept drift` to check spec freshness (semantic analysis, not mtime).
 
 ### Recommended Commands (dependency order)
 

@@ -150,7 +150,7 @@ Code modified since last drift: src/lib/server/concepts/indicators, src/lib/serv
 Uncovered modules (>2 files, no CONCEPT.md): src/lib/components, src/lib/server/db/schema
 ```
 
-Reports spec coverage, drift staleness, code changes since last drift, ARCHITECTURE.md freshness, and uncovered modules (directories with >2 source files but no CONCEPT.md). Well-known non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`) are excluded. If no specs exist, it suggests running `/wyx:concept` to get started.
+Reports spec coverage, drift staleness, code changes since last drift, ARCHITECTURE.md freshness, and uncovered modules (directories with >2 source files but no CONCEPT.md). Non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`) are excluded. If no specs exist, it suggests running `/wyx:concept` to get started.
 
 </details>
 

@@ -130,6 +130,12 @@ if [ "$concept_count" -gt 0 ]; then
     case "$rel" in
       */components/ui|*/components/ui/*) continue ;;
     esac
+    case "$rel" in
+      */types|types/*|*/e2e|e2e/*|*/cypress|cypress/*) continue ;;
+    esac
+    case "$rel" in
+      */fixtures|fixtures/*|*/stubs|stubs/*|*/mocks|mocks/*) continue ;;
+    esac
     uncovered="${uncovered:+$uncovered, }$rel"
   done < <(find "$PROJECT_DIR" -mindepth 1 -type d \
     -not -path '*/node_modules/*' -not -path '*/dist/*' \
@@ -143,9 +149,11 @@ if [ "$concept_count" -gt 0 ]; then
       if [ -f "$d/CONCEPT.md" ]; then
         continue
       fi
-      # Count source files (non-recursive, exclude hidden and common non-source)
+      # Count source files only (non-recursive)
       file_count=$(find "$d" -maxdepth 1 -type f \
-        -not -name '.*' -not -name '*.lock' -not -name '*.log' \
+        \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" \
+           -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \
+           -o -name "*.svelte" -o -name "*.vue" -o -name "*.jl" \) \
         2>/dev/null | wc -l | tr -d ' ')
       if [ "$file_count" -gt 2 ]; then
         printf '%s\n' "$d"
