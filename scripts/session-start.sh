@@ -5,6 +5,14 @@ set -euo pipefail
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 PROJECT_DIR="${PROJECT_DIR%/}"
 
+# Common find exclusion patterns (shared across all find calls)
+FIND_EXCLUDES=(
+  -not -path '*/node_modules/*' -not -path '*/.git/*'
+  -not -path '*/dist/*' -not -path '*/build/*'
+  -not -path '*/.next/*' -not -path '*/vendor/*'
+  -not -path '*/.venv/*' -not -path '*/venv/*'
+)
+
 # Warn if jq is missing (drift context hook depends on it)
 if ! command -v jq &>/dev/null; then
   echo "wyx: jq not found — drift context (boundary checking) is disabled. Install jq for full protection."
@@ -13,10 +21,7 @@ fi
 # Find wyx spec files, excluding common build/dependency directories
 find_specs() {
   find "$PROJECT_DIR" -name "$1" \
-    -not -path '*/node_modules/*' -not -path '*/.git/*' \
-    -not -path '*/dist/*' -not -path '*/build/*' \
-    -not -path '*/.next/*' -not -path '*/vendor/*' \
-    -not -path '*/.venv/*' -not -path '*/venv/*' \
+    "${FIND_EXCLUDES[@]}" \
     2>/dev/null | sort || true
 }
 
@@ -76,10 +81,7 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
     # Warn if specs modified since last drift check
     newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
       -newer "$drift_history" \
-      -not -path '*/node_modules/*' -not -path '*/.git/*' \
-      -not -path '*/dist/*' -not -path '*/build/*' \
-      -not -path '*/.next/*' -not -path '*/vendor/*' \
-      -not -path '*/.venv/*' -not -path '*/venv/*' \
+      "${FIND_EXCLUDES[@]}" \
       2>/dev/null | head -1)
     if [ -n "$newer_than_drift" ]; then
       echo "Specs modified since last drift check — consider running /wyx:concept drift"
@@ -88,10 +90,7 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
     changed_dirs=$(find "$PROJECT_DIR" -type f \
       \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" -o -name "*.svelte" -o -name "*.vue" \) \
       -newer "$drift_history" \
-      -not -path '*/node_modules/*' -not -path '*/.git/*' \
-      -not -path '*/dist/*' -not -path '*/build/*' \
-      -not -path '*/.next/*' -not -path '*/vendor/*' \
-      -not -path '*/.venv/*' -not -path '*/venv/*' \
+      "${FIND_EXCLUDES[@]}" \
       2>/dev/null | xargs -r dirname 2>/dev/null | sort -u | sed "s|^$PROJECT_DIR/||" | head -5)
     if [ -n "$changed_dirs" ]; then
       changed_list=$(echo "$changed_dirs" | tr '\n' ',' | sed 's/,$//')
@@ -104,10 +103,7 @@ fi
 if [ -f "$PROJECT_DIR/ARCHITECTURE.md" ]; then
   newer_specs=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
     -newer "$PROJECT_DIR/ARCHITECTURE.md" \
-    -not -path '*/node_modules/*' -not -path '*/.git/*' \
-    -not -path '*/dist/*' -not -path '*/build/*' \
-    -not -path '*/.next/*' -not -path '*/vendor/*' \
-    -not -path '*/.venv/*' -not -path '*/venv/*' \
+    "${FIND_EXCLUDES[@]}" \
     2>/dev/null | head -1)
   if [ -n "$newer_specs" ]; then
     echo "Warning: ARCHITECTURE.md may be stale — specs modified since last /wyx:map run."
@@ -138,11 +134,8 @@ if [ "$concept_count" -gt 0 ]; then
     esac
     uncovered="${uncovered:+$uncovered, }$rel"
   done < <(find "$PROJECT_DIR" -mindepth 1 -type d \
-    -not -path '*/node_modules/*' -not -path '*/dist/*' \
-    -not -path '*/build/*' -not -path '*/.next/*' \
-    -not -path '*/vendor/*' -not -path '*/.venv/*' \
-    -not -path '*/venv/*' -not -path '*/target/*' \
-    -not -path '*/__pycache__/*' \
+    "${FIND_EXCLUDES[@]}" \
+    -not -path '*/target/*' -not -path '*/__pycache__/*' \
     -not -name '.*' -not -path '*/.*' \
     2>/dev/null | while IFS= read -r d; do
       # Skip directories that already have a CONCEPT spec

@@ -117,6 +117,7 @@ When designing from a feature description:
 2. Ask: "Does this decomposition look right? Should anything be split or merged?"
 3. Only write the `CONCEPT.md` file after the user approves
 4. If a `CONCEPT.md` already exists, show a diff of proposed changes
+5. If `ARCHITECTURE.md` exists in the project, remind the user: "Spec changed — run `/wyx:map` to update ARCHITECTURE.md."
 
 ## Spec Placement and Hook Behavior
 
@@ -186,8 +187,10 @@ When 3+ specs are found, use `Agent` with `subagent_type: "Explore"` to scan spe
 - When the spec uses a simpler signature than the implementation's type wrapper (e.g., `void` vs `Promise<void>`, `Result` vs `anyhow::Result`), treat the discrepancy as Low unless it changes the error handling or calling contract.
 - State fields that are implementation details (private variables, internal caches, derived computed values) rather than part of the concept's public API contract should be flagged as Low severity.
 - Private helper methods or internal implementation functions (not exported, not called from outside the module) that appear as "Missing action" findings should be treated as Low severity — these are implementation details, not part of the concept's public API contract.
+- Naming convention differences between spec and code (camelCase vs snake_case, abbreviated vs full names) are Low severity — style issues, not contract violations. Exception: if the divergent name appears in cross-spec references (PIPELINE.md or SYNCS.md), flag as Medium since renaming requires coordinated updates.
+- When the same Low finding repeats across multiple actions in one spec (e.g., same undocumented parameter in 3+ actions), count as a single Low with a note listing affected actions. Deduplicated Lows count as 1 in the `low_by_spec` JSONL field.
 - Before reporting a finding as Medium or higher, verify it exists in the current code with grep or file read. Do not report drift based on memory or assumptions from prior file reads.
-- If a single spec accumulates more than 5 Low findings, note this in the drift report summary and suggest re-evaluating whether the spec's `## actions` or `## state` adequately describes the module's current public surface.
+- If a single spec accumulates more than 5 Low findings (after deduplication), note this in the drift report summary and suggest re-evaluating whether the spec's `## actions` or `## state` adequately describes the module's current public surface.
 
 ### Drift Report Format
 
@@ -261,6 +264,7 @@ Systemic patterns suggest cross-cutting concerns rather than individual spec dri
 **Phase 2 — Fix (user-approved writes):**
 3. If updating spec: generate the specific minimal edits needed, then apply after user confirmation
 4. If code bug: flag for fixing (the spec is the intended contract)
+5. If spec changes were applied and `ARCHITECTURE.md` exists, remind the user: "Specs updated — run `/wyx:map` to regenerate ARCHITECTURE.md."
 
 **Phase 3 — Record drift history:**
 5. Append a summary entry to `.claude/wyx-drift-history.jsonl`:

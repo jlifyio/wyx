@@ -116,6 +116,7 @@ When designing from a pipeline description:
 2. Ask: "Are the invariants correct? Should any stages be split or merged?"
 3. Only write the `PIPELINE.md` file after the user approves
 4. If a `PIPELINE.md` already exists, show a diff of proposed changes
+5. If `ARCHITECTURE.md` exists in the project, remind the user: "Spec changed — run `/wyx:map` to update ARCHITECTURE.md."
 
 ## Relationship to Other wyx Skills
 
