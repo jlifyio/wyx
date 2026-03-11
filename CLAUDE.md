@@ -10,7 +10,7 @@ Adapts ideas from two sources:
 - **WYSIWID** (Meng & Jackson, MIT) — concept spec format and boundary declarations
 - **WYWIWID** (Dr. Ernie) — evidence-based legibility concepts (concept drift detection, pipeline invariants)
 
-This is a Claude Code plugin (4 SKILL.md files + 2 hooks), not a CLI tool or runtime engine. The primary differentiator is the hooks — the skills are convenience packaging for generating the specs that fuel the hooks.
+This is a Claude Code plugin (5 SKILL.md files + 2 hooks), not a CLI tool or runtime engine. The primary differentiator is the hooks — the skills are convenience packaging for generating the specs that fuel the hooks.
 
 ## Architecture
 
@@ -23,6 +23,7 @@ scripts/
 ├── session-start.sh        # Artifact coverage + drift/ARCHITECTURE.md staleness + uncovered modules (with exclusions)
 └── drift-context.sh        # Boundary injection near specs + CRLF handling + shadowing mitigation
 skills/
+├── audit/SKILL.md          # /wyx:audit — project audit & command planner
 ├── concept/SKILL.md        # /wyx:concept — bounded concept design + drift detection
 ├── map/SKILL.md            # /wyx:map — architecture visualization from specs
 ├── pipeline/SKILL.md       # /wyx:pipeline — data pipeline specs with quality invariants
@@ -30,6 +31,8 @@ skills/
 ```
 
 ### Skills
+
+**`/wyx:audit`** — Discovery-only project scanner (~120 lines, read-only). Scans for spec coverage gaps, detects pipeline/sync candidates via code pattern analysis, and outputs a dependency-ordered TODO list of individual skill commands. Uses parallel Explore-type Agent subagents for projects with 5+ uncovered modules. Does not generate specs or modify files — guides users to run individual skills in the right order.
 
 **`/wyx:concept`** — Generates structured concept specs (CONCEPT.md) as compressed context for code generation. Four modes: Retrofit (path arg), Greenfield (text arg), Drift (`drift [path]`), Discovery (no args). Format: purpose + state + actions + operational principle + interactions + dependencies. Five Design Rules: (1) single purpose, (2) concept independence, (3) state ownership, (4) actions as interface, (5) actions as declarations not events (cross-cutting infrastructure should be its own concept). Retrofit mode guides authors to focus on public contract fields (omit implementation details from `## state`) and cross-references state with other CONCEPT.md specs to flag Rule 3 overlaps. Drift mode includes cross-spec reference validation (PIPELINE/SYNCS→CONCEPT name matching), systemic pattern aggregation, cross-cutting parameter detection, `## known gaps` resolution checking, and calibration rules (type wrapper differences = Low, implementation-detail fields = Low, private helper methods = Low, grep-verify before Medium+ reporting, >5 Low per spec triggers re-evaluation advisory). Drift history JSONL tracks Low counts for accumulation trending.
 
@@ -58,7 +61,7 @@ skills/
 
 This is a plugin repository. There is no build step, test suite, or package.json.
 
-**Deliverables**: `.claude-plugin/plugin.json` + `hooks/hooks.json` + `scripts/` + 4 SKILL.md files in `skills/`.
+**Deliverables**: `.claude-plugin/plugin.json` + `hooks/hooks.json` + `scripts/` + 5 SKILL.md files in `skills/`.
 
 **Marketplace**: Hosted separately at [jlifyio/claude-plugins](https://github.com/jlifyio/claude-plugins). Install: `/plugin marketplace add jlifyio/claude-plugins` then `/plugin install wyx@jlifyio`.
 
@@ -95,7 +98,7 @@ echo '{"tool_name":"Write","tool_input":{"file_path":"/path/to/project/src/modul
 # Validate plugin structure
 python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))" && echo "plugin.json OK"
 python3 -c "import json; json.load(open('hooks/hooks.json'))" && echo "hooks.json OK"
-for s in concept map pipeline sync; do test -f skills/$s/SKILL.md && echo "$s OK"; done
+for s in audit concept map pipeline sync; do test -f skills/$s/SKILL.md && echo "$s OK"; done
 ```
 
 ## Shell Script Conventions
@@ -138,7 +141,8 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **Read-only subagents only**: Concept drift and map generation use Explore-type subagents (structurally read-only — Write/Edit unavailable) for parallel scanning. Full plugin agents (with write access or isolated context) remain excluded.
 - **One spec per directory**: Multi-file patterns (`CONCEPT-*.md`) were removed — they caused 83% irrelevant boundary context injection in flat directories.
 - **No SYNCS.md splitting**: The `## coordination graph` requires a complete view of all sync flows; partial graphs give false confidence.
-- **Integration is a platform constraint**: The 4 skills operate independently (no skill-to-skill invocation in Claude Code). This is structural, not a bug.
+- **Audit is discovery-only**: `/wyx:audit` scans and reports but does not generate specs. A full orchestrator was rejected (3-agent debate) for context window exhaustion, template drift, and quality degradation. Individual skills get fresh context windows — this is a feature, not a limitation.
+- **Integration is a platform constraint**: The 5 skills operate independently (no skill-to-skill invocation in Claude Code). This is structural, not a bug.
 - **No auto-invocation rules**: CLAUDE.md rules telling users to "check specs before imports" are redundant — the PreToolUse hook does this automatically.
 
 ## Test Results
