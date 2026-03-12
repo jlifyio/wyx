@@ -14,6 +14,9 @@ You do NOT generate specs — you identify what needs specs and output commands 
 Unlike SessionStart (which reports counts), this adds: pattern-based pipeline/sync
 candidate detection and dependency-ordered command sequences.
 
+**Tool constraint**: Use only Glob, Grep, and Read. Do NOT use Bash, shell commands,
+`find`, or subagents for any step. File discovery and counting must use Glob results.
+
 ## How to interpret $ARGUMENTS
 
 - **Path** (e.g. `src/lib/server/`): Scope the audit to this subtree only.
@@ -30,11 +33,17 @@ Read each spec's first heading to extract the concept/pipeline/sync name.
 
 ## Step 2: Identify Uncovered Modules
 
-Find directories with 3+ source files (`.ts`, `.js`, `.tsx`, `.jsx`, `.svelte`, `.vue`,
-`.py`, `.rs`, `.go`, `.java`, `.jl`) lacking a colocated CONCEPT.md. Exclude: `tests/`,
-`test/`, `docs/`, `migrations/`, `node_modules/`, `.git/`, `dist/`, `build/`,
-`components/ui/`, `__pycache__/`, `.svelte-kit/`, `target/`, `.claude/`,
-`types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`.
+Find directories with 3+ source files lacking a colocated CONCEPT.md.
+**Use Glob only** — never use Bash/find/shell commands for file discovery.
+
+How to count source files per directory using Glob:
+1. Run Glob for `**/*.{ts,js,tsx,jsx,svelte,vue,py,rs,go,java,jl}` (scoped to path if given)
+2. From the results, group files by their parent directory and count per directory
+3. Directories with 3+ source files and no colocated CONCEPT.md are candidates
+
+Exclude directories matching: `tests/`, `test/`, `docs/`, `migrations/`, `node_modules/`,
+`.git/`, `dist/`, `build/`, `components/ui/`, `__pycache__/`, `.svelte-kit/`, `target/`,
+`.claude/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`.
 
 Before flagging a directory, evaluate for behavioral cohesion — directories containing
 only type definitions, stateless utility functions, thin store wrappers, or schema
