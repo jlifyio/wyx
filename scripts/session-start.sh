@@ -41,7 +41,7 @@ total=$((concept_count + pipeline_count + sync_count))
 
 # No artifacts found — suggest getting started
 if [ "$total" -eq 0 ]; then
-  echo "wyx: No specs found. Try /wyx:concept to discover modules that could benefit from concept specs."
+  echo "wyx: No specs found. Try /wyx:audit to discover modules that could benefit from specs."
   exit 0
 fi
 
@@ -110,7 +110,7 @@ if [ -f "$PROJECT_DIR/ARCHITECTURE.md" ]; then
   fi
 fi
 
-# Suggest uncovered modules (directories with >2 source files but no CONCEPT.md)
+# Suggest uncovered modules (directories with >2 source files but no CONCEPT.md or PIPELINE.md)
 if [ "$concept_count" -gt 0 ]; then
   uncovered=""
   while IFS= read -r dir; do
@@ -138,8 +138,8 @@ if [ "$concept_count" -gt 0 ]; then
     -not -path '*/target/*' -not -path '*/__pycache__/*' \
     -not -name '.*' -not -path '*/.*' \
     2>/dev/null | while IFS= read -r d; do
-      # Skip directories that already have a CONCEPT spec
-      if [ -f "$d/CONCEPT.md" ]; then
+      # Skip directories that already have a boundary-contributing spec
+      if [ -f "$d/CONCEPT.md" ] || [ -f "$d/PIPELINE.md" ]; then
         continue
       fi
       # Count source files only (non-recursive)
@@ -153,14 +153,15 @@ if [ "$concept_count" -gt 0 ]; then
       fi
     done | sort)
   if [ -n "$uncovered" ]; then
-    echo "Uncovered modules (>2 files, no CONCEPT.md): $uncovered"
+    echo "Uncovered modules (>2 files, no spec): $uncovered"
   fi
 fi
 
-# Detect spec shadowing: non-CONCEPT specs without co-located CONCEPT.md may hide ancestor boundary checking
+# Detect spec shadowing: PIPELINE.md without co-located CONCEPT.md stops hook traversal,
+# hiding ancestor boundary checking. SYNCS.md does not stop traversal so cannot cause shadowing.
 if [ "$concept_count" -gt 0 ]; then
   shadows=""
-  for spec_list in "$pipelines" "$syncs"; do
+  for spec_list in "$pipelines"; do
     [ -z "$spec_list" ] && continue
     while IFS= read -r spec_file; do
       [ -z "$spec_file" ] && continue
