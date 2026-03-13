@@ -2,6 +2,7 @@
 name: wyx-release
 description: Release a new version of wyx — bumps version across all files, commits, tags, pushes, and creates a GitHub release
 argument-hint: "<version> (e.g., 0.18.0)"
+disable-model-invocation: true
 ---
 
 # wyx release

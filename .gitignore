@@ -1,6 +1,6 @@
 # Claude Code
 .claude/*
-!.claude/commands/
+!.claude/skills/
 
 # OS
 .DS_Store
