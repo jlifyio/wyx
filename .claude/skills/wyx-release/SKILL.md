@@ -14,7 +14,7 @@ Release a new version of wyx.
 ## Pre-flight checks
 
 1. Verify you are on the `main` branch with a clean working tree (`git status`)
-2. If no version argument is given, read the current version from `.claude-plugin/plugin.json` and ask the user what the new version should be
+2. If no version argument is given, read the current version from `.claude-plugin/plugin.json`, then suggest the three semver bumps (e.g., for `0.18.3`: patch `0.18.4`, minor `0.19.0`, major `1.0.0`) and ask the user to pick one or specify a custom version
 3. Validate the version follows semver (e.g., `0.18.0`)
 
 ## Release steps
