@@ -50,7 +50,7 @@ skills/
 
 ### Key Constraints
 
-- Each skill is a single self-contained SKILL.md (YAML frontmatter + markdown body)
+- Each skill is a self-contained SKILL.md (YAML frontmatter + markdown body), with optional references/ for detailed content loaded on demand (progressive disclosure)
 - Artifacts are colocated with code: CONCEPT.md, PIPELINE.md, SYNCS.md next to implementation; drift history in `.claude/wyx-drift-history.jsonl`
 - **One spec per directory**: Only `CONCEPT.md`, `PIPELINE.md`, `SYNCS.md` are recognized (no `CONCEPT-*.md` glob patterns). Each concept gets its own subdirectory. This ensures the PreToolUse hook injects only relevant boundary declarations.
 - **Stop-at-first traversal**: `drift-context.sh` walks upward from the edited file and stops at the first directory containing a boundary-contributing spec (CONCEPT.md or PIPELINE.md). SYNCS.md is listed in spec context but does not stop traversal or inject boundary declarations. If no CONCEPT.md is co-located with the stopping spec (e.g., PIPELINE.md-only directory), the hook continues upward to find an ancestor CONCEPT.md and injects its boundaries with a `[SHADOWED]` caveat (see anti-patterns in concept/SKILL.md).
