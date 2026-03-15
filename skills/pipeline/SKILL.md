@@ -3,8 +3,9 @@ name: pipeline
 description: >
   This skill should be used when the user asks to "create a pipeline spec",
   "document data transformations", "audit data flow", "specify pipeline
-  invariants", or wants to design, retrofit, or discover data pipelines
-  with quality invariants and boundary ownership. Produces PIPELINE.md specs.
+  invariants", "wyx pipeline", "wyx", or wants to design, retrofit, or
+  discover data pipelines with quality invariants and boundary ownership.
+  Produces PIPELINE.md specs.
 argument-hint: "e.g. src/lib/syncs/, Sentiment scoring pipeline, or leave empty to discover"
 allowed-tools: Read, Glob, Grep, Write, Edit
 ---

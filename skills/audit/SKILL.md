@@ -3,9 +3,9 @@ name: audit
 description: >
   This skill should be used when the user asks to "audit spec coverage",
   "find uncovered modules", "scan for missing specs", "check wyx coverage",
-  "get spec TODO list", or wants a prioritized list of wyx skill commands
-  for uncovered modules. Scans for coverage gaps, pipeline/sync candidates,
-  and outputs dependency-ordered commands.
+  "get spec TODO list", "wyx audit", "wyx", or wants a prioritized list
+  of wyx skill commands for uncovered modules. Scans for coverage gaps,
+  pipeline/sync candidates, and outputs dependency-ordered commands.
 argument-hint: "e.g. src/lib/ to scope subtree, or leave empty for full project"
 allowed-tools: Read, Glob, Grep
 ---

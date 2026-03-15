@@ -3,8 +3,8 @@ name: sync
 description: >
   This skill should be used when the user asks to "document sync patterns",
   "map sync handlers", "create SYNCS.md", "audit sync coordination",
-  or wants to understand how concepts communicate through orchestrated
-  workflows. Produces SYNCS.md coordination maps.
+  "wyx sync", "wyx", or wants to understand how concepts communicate
+  through orchestrated workflows. Produces SYNCS.md coordination maps.
 argument-hint: "e.g. src/lib/server/syncs/ or Stock-to-Indicators pipeline"
 allowed-tools: Read, Glob, Grep, Write, Edit
 ---

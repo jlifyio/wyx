@@ -3,8 +3,9 @@ name: concept
 description: >
   This skill should be used when the user asks to "create a concept spec",
   "retrofit a module", "check spec drift", "run drift detection",
-  "design a new module", or wants to generate, update, or audit CONCEPT.md
-  files. Supports retrofit, greenfield, drift detection, and discovery modes.
+  "design a new module", "wyx concept", "wyx", or wants to generate, update,
+  or audit CONCEPT.md files. Supports retrofit, greenfield, drift detection,
+  and discovery modes.
 argument-hint: "e.g. src/lib/auth/, Payment processing, drift src/lib/, or leave empty to discover"
 allowed-tools: Read, Glob, Grep, Write, Edit, Agent
 ---

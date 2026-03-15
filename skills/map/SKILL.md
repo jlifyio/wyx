@@ -3,8 +3,8 @@ name: map
 description: >
   This skill should be used when the user asks to "generate architecture map",
   "visualize spec relationships", "create ARCHITECTURE.md", "show concept
-  dependencies", or wants a Mermaid graph with dependency matrix and data
-  flow paths derived from all wyx specs.
+  dependencies", "wyx map", "wyx", or wants a Mermaid graph with dependency
+  matrix and data flow paths derived from all wyx specs.
 argument-hint: "e.g. src/lib/ to map a subtree, or leave empty for full project"
 allowed-tools: Read, Glob, Grep, Write, Agent
 ---
