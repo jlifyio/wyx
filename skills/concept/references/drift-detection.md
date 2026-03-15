@@ -128,14 +128,23 @@ Systemic patterns suggest cross-cutting concerns rather than individual spec dri
 **Phase 1 — Audit (read-only):**
 1. Present the full report to the user
 2. For each drifted spec, ask: "Update the spec to match code, or is this a code bug?"
+3. When findings indicate structural issues (boundary violations, state overlap,
+   cross-cutting patterns), note which Design Rule (1-5) applies and suggest the
+   appropriate wyx command — whether updating an existing spec or creating a new one
+   (`/wyx:concept`, `/wyx:pipeline`, `/wyx:sync`, `/wyx:audit`).
+4. After the summary, add a "Suggested next steps" line listing the highest-priority
+   wyx commands to address the findings (e.g., `/wyx:concept path/` for specs with
+   drift, `/wyx:audit` if uncovered modules were noted).
+5. If uncovered modules were observed during scanning, suggest: "Run `/wyx:audit` to
+   check overall spec coverage."
 
 **Phase 2 — Fix (user-approved writes):**
-3. If updating spec: generate the specific minimal edits needed, then apply after user confirmation
-4. If code bug: flag for fixing (the spec is the intended contract)
-5. If spec changes were applied and `ARCHITECTURE.md` exists, remind the user: "Specs updated — run `/wyx:map` to regenerate ARCHITECTURE.md."
+6. If updating spec: generate the specific minimal edits needed, then apply after user confirmation
+7. If code bug: flag for fixing (the spec is the intended contract)
+8. If spec changes were applied and `ARCHITECTURE.md` exists, remind the user: "Specs updated — run `/wyx:map` to regenerate ARCHITECTURE.md."
 
 **Phase 3 — Record drift history:**
-5. Append a summary entry to `.claude/wyx-drift-history.jsonl`:
+9. Append a summary entry to `.claude/wyx-drift-history.jsonl`:
 ```json
 {"ts":"<ISO-8601>","specs_scanned":<N>,"specs_with_drift":<N>,"critical":<N>,"high":<N>,"medium":<N>,"low":<N>,"low_by_spec":{"path/CONCEPT.md":<N>},"path":"<scanned-path-or-project>"}
 ```
