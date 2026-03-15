@@ -39,30 +39,42 @@ Read each file first, then update the version string in ALL of these:
 
 Also grep the repo for the OLD version number and update any other version references found (skip changelogs, history, and git log output).
 
-### 2. Commit
+### 2. Review docs for content updates
 
-Commit all version-bumped files with message `vX.Y.Z`. Follow commit conventions (Co-Authored-By trailer). Only include files that were actually changed.
+Review changes since the last release (`git log --oneline <old-tag>..HEAD`) and evaluate whether docs need **content** updates (beyond version strings already handled in step 1).
 
-### 3. Tag
+| Target | What to review | Update when |
+|--------|---------------|-------------|
+| `CLAUDE.md` | Architecture, constraints, conventions, design decisions | New skill added/removed, hook behavior changed, convention changed |
+| `README.md` | Features, usage, setup instructions | User-facing behavior changed, new capability added |
+| MEMORY.md | `## Project Status` description, topic summaries | Status description no longer reflects current focus |
+
+**Principle:** Only update if the release diff genuinely warrants it. Skip if changes are already obvious from code/git history or would duplicate existing docs. Report what was updated and what was skipped (1 line each).
+
+### 3. Commit
+
+Commit all changed files (version bumps + doc updates) with message `vX.Y.Z`. Follow commit conventions (Co-Authored-By trailer). Only include files that were actually changed.
+
+### 4. Tag
 
 ```bash
 git tag -a vX.Y.Z -m "vX.Y.Z"
 ```
 
-### 4. Push
+### 5. Push
 
 ```bash
 git push origin main
 git push origin vX.Y.Z
 ```
 
-### 5. GitHub Release
+### 6. GitHub Release
 
 ```bash
 gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
 ```
 
-### 6. Verify
+### 7. Verify
 
 Confirm and report:
 - `git log --oneline -1` shows the version commit
