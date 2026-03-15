@@ -1,5 +1,10 @@
 {
   "name": "wyx",
   "description": "Architecture guardrails for Claude Code — automatically injects module boundaries into Claude's context on every write",
-  "version": "0.18.4"
+  "version": "0.18.4",
+  "author": {
+    "name": "jlifyio"
+  },
+  "repository": "https://github.com/jlifyio/wyx",
+  "license": "MIT"
 }
