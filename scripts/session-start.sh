@@ -77,7 +77,7 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
   last_ts=$(echo "$last_entry" | jq -r '.ts // empty' 2>/dev/null)
   last_drift=$(echo "$last_entry" | jq -r '.specs_with_drift // 0' 2>/dev/null)
   if [ -n "$last_ts" ]; then
-    echo "Last drift check: $last_ts ($last_drift spec(s) with drift)"
+    echo "Last drift check: $last_ts ($last_drift spec(s) with drift — rerun to update)"
     # Warn if specs modified since last drift check
     newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
       -newer "$drift_history" \
@@ -203,7 +203,7 @@ if [ "$concept_count" -gt 0 ]; then
     fi
   fi
   if [ "$suggest_drift" = true ]; then
-    echo "Suggestion: Run /wyx:concept drift to check if specs are up to date."
+    echo "Suggestion: Run /wyx:concept drift to check specs and update this status."
   fi
 else
   echo "Suggestion: Run /wyx:concept to create your first concept spec."
