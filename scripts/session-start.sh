@@ -110,7 +110,7 @@ if [ -f "$PROJECT_DIR/ARCHITECTURE.md" ]; then
   fi
 fi
 
-# Suggest uncovered modules (directories with >2 source files but no CONCEPT.md or PIPELINE.md)
+# Suggest uncovered modules (directories with >2 source files but no CONCEPT.md, PIPELINE.md, or SYNCS.md)
 if [ "$concept_count" -gt 0 ]; then
   uncovered=""
   while IFS= read -r dir; do
@@ -139,7 +139,7 @@ if [ "$concept_count" -gt 0 ]; then
     -not -name '.*' -not -path '*/.*' \
     2>/dev/null | while IFS= read -r d; do
       # Skip directories that already have a boundary-contributing spec
-      if [ -f "$d/CONCEPT.md" ] || [ -f "$d/PIPELINE.md" ]; then
+      if [ -f "$d/CONCEPT.md" ] || [ -f "$d/PIPELINE.md" ] || [ -f "$d/SYNCS.md" ]; then
         continue
       fi
       # Count source files only (non-recursive)
@@ -153,7 +153,7 @@ if [ "$concept_count" -gt 0 ]; then
       fi
     done | sort)
   if [ -n "$uncovered" ]; then
-    echo "Uncovered modules (>2 files, no spec): $uncovered"
+    echo "Uncovered modules (>2 source files, no CONCEPT/PIPELINE/SYNCS): $uncovered"
   fi
 fi
 
