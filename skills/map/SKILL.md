@@ -1,16 +1,17 @@
 ---
 name: map
 description: >
-  Generate an architecture map (ARCHITECTURE.md) showing relationships between
-  all wyx specs. Reads CONCEPT.md, PIPELINE.md, and SYNCS.md to produce a
-  Mermaid graph with dependency matrix and data flow paths.
+  This skill should be used when the user asks to "generate architecture map",
+  "visualize spec relationships", "create ARCHITECTURE.md", "show concept
+  dependencies", or wants a Mermaid graph with dependency matrix and data
+  flow paths derived from all wyx specs.
 argument-hint: "e.g. src/lib/ to map a subtree, or leave empty for full project"
 allowed-tools: Read, Glob, Grep, Write, Agent
 ---
 
 # Architecture Map Generation
 
-You are generating an **architecture map** — a synthesized view of all concept, pipeline,
+Generate an **architecture map** — a synthesized view of all concept, pipeline,
 and sync specs in a project. The map shows how concepts relate to each other, where data
 flows, and which external systems are involved. It produces a single `ARCHITECTURE.md`
 with a Mermaid relationship graph, dependency matrix, and data flow paths. ARCHITECTURE.md is a human reference document for orientation and code review — it is not consumed by wyx hooks.

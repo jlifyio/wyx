@@ -1,16 +1,17 @@
 ---
 name: pipeline
 description: >
-  Specify wyx data pipelines with quality invariants and boundary ownership.
-  Use when designing data pipelines, auditing existing transformations,
-  or discovering pipeline candidates. Produces PIPELINE.md specs.
+  This skill should be used when the user asks to "create a pipeline spec",
+  "document data transformations", "audit data flow", "specify pipeline
+  invariants", or wants to design, retrofit, or discover data pipelines
+  with quality invariants and boundary ownership. Produces PIPELINE.md specs.
 argument-hint: "e.g. src/lib/syncs/, Sentiment scoring pipeline, or leave empty to discover"
 allowed-tools: Read, Glob, Grep, Write, Edit
 ---
 
 # Data Workflow Specification
 
-You are generating a **data pipeline specification** — a structured description of how data
+Generate a **data pipeline specification** — a structured description of how data
 flows through transformations, what quality invariants must hold, and which concepts own the
 source and output data.
 

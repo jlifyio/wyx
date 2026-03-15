@@ -1,16 +1,17 @@
 ---
 name: sync
 description: >
-  Document wyx coordination patterns between concepts. Use when designing syncs,
-  auditing sync directories, or understanding how concepts communicate through
-  orchestrated workflows. Produces SYNCS.md coordination maps.
+  This skill should be used when the user asks to "document sync patterns",
+  "map sync handlers", "create SYNCS.md", "audit sync coordination",
+  or wants to understand how concepts communicate through orchestrated
+  workflows. Produces SYNCS.md coordination maps.
 argument-hint: "e.g. src/lib/server/syncs/ or Stock-to-Indicators pipeline"
 allowed-tools: Read, Glob, Grep, Write, Edit
 ---
 
 # Sync Coordination Mapping
 
-You are generating a **sync coordination map** — a structured description of how
+Generate a **sync coordination map** — a structured description of how
 independent concepts interact through synchronization handlers. A sync map replaces
 reading dozens of handler files with a single page showing the coordination topology,
 timing patterns, and error strategies.

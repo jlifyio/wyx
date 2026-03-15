@@ -1,8 +1,11 @@
 ---
 name: audit
 description: >
-  Scan project for wyx spec coverage gaps, detect pipeline/sync candidates,
-  and output a prioritized TODO list of individual wyx skill commands.
+  This skill should be used when the user asks to "audit spec coverage",
+  "find uncovered modules", "scan for missing specs", "check wyx coverage",
+  "get spec TODO list", or wants a prioritized list of wyx skill commands
+  for uncovered modules. Scans for coverage gaps, pipeline/sync candidates,
+  and outputs dependency-ordered commands.
 argument-hint: "e.g. src/lib/ to scope subtree, or leave empty for full project"
 allowed-tools: Read, Glob, Grep
 ---
@@ -10,7 +13,7 @@ allowed-tools: Read, Glob, Grep
 # Project Audit & Command Planner
 
 Scan project for wyx spec coverage and generate a prioritized action plan.
-You do NOT generate specs — you identify what needs specs and output commands to run.
+This skill does NOT generate specs — it identifies what needs specs and outputs commands to run.
 Unlike SessionStart (which reports counts), this adds: pattern-based pipeline/sync
 candidate detection and dependency-ordered command sequences.
 
