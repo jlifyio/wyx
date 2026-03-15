@@ -119,6 +119,8 @@ When designing from a pipeline description:
 3. Only write the `PIPELINE.md` file after the user approves
 4. If a `PIPELINE.md` already exists, show a diff of proposed changes
 5. If `ARCHITECTURE.md` exists in the project, remind the user: "Spec changed — run `/wyx:map` to update ARCHITECTURE.md."
+6. If the pipeline references concepts without CONCEPT.md, suggest:
+   "Run `/wyx:concept path/` to create the missing concept spec first."
 
 ## Relationship to Other wyx Skills
 

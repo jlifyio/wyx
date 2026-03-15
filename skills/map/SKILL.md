@@ -167,6 +167,10 @@ These are intentional design choices, not parser limitations:
 2. Present a brief summary: node count, edge count, key patterns observed, and coverage stats
 3. If `ARCHITECTURE.md` already exists, overwrite it — no confirmation needed
 4. Note: Mermaid graphs render visually on GitHub and VS Code; in terminal they appear as raw text (still human-parseable)
+5. If `ARCHITECTURE.md` was overwritten, suggest: "Run `git diff ARCHITECTURE.md` to review changes."
+6. In the coverage section, for each uncovered module suggest the appropriate command:
+   `/wyx:concept path/` for concept candidates, `/wyx:pipeline path/` for data
+   transformation directories, or `/wyx:audit` for a full assessment.
 
 ## Relationship to Other wyx Skills
 

@@ -128,6 +128,8 @@ When designing from a sync description:
 2. Ask: "Are the timing patterns correct? Should any syncs be split or merged?"
 3. Only write the `SYNCS.md` file after the user approves
 4. If a `SYNCS.md` already exists, show a diff of proposed changes
+5. If related CONCEPT.md specs exist, suggest: "Run `/wyx:concept drift` to verify
+   sync references match current concept declarations."
 
 ## Relationship to Other wyx Skills
 
