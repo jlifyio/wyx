@@ -34,6 +34,10 @@ Glob for all wyx spec files (scoped to path if given):
 
 Read each spec's first heading to extract the concept/pipeline/sync name.
 
+For each spec, also check for boundary-contributing sections (the sections the PreToolUse
+hook extracts): CONCEPT.md should have `## interactions` or `## dependencies`; PIPELINE.md
+should have `## data boundary`. Note any spec missing all its expected boundary sections.
+
 ## Step 2: Identify Uncovered Modules
 
 Find directories with 3+ source files lacking a colocated CONCEPT.md.
@@ -51,6 +55,11 @@ Exclude directories matching: `tests/`, `test/`, `docs/`, `migrations/`, `node_m
 Before flagging a directory, evaluate for behavioral cohesion — directories containing
 only type definitions, stateless utility functions, thin store wrappers, or schema
 definitions rarely warrant concept specs (no state ownership + actions + operational principle).
+When evaluating cohesion, look for concrete signals: mutable state ownership (e.g. `$state`,
+`useState`, class fields), lifecycle methods (init/reset/destroy), persistence imports
+(database, localStorage, Storage), or event emission (emit/dispatch/publish). Directories
+with multiple signals are stronger concept candidates; directories with none are likely
+infrastructure — note the reason when skipping.
 
 ## Step 3: Detect Pipeline Candidates
 
@@ -94,6 +103,26 @@ Present in this exact format:
 |------|------|
 | `path/CONCEPT.md` | concept |
 | `path/PIPELINE.md` | pipeline |
+
+If any specs from Step 1 lack boundary-contributing sections, note after the table:
+"{N} spec(s) provide no boundary declarations — the PreToolUse hook injects nothing
+for these directories. Consider adding `## interactions`/`## dependencies` (CONCEPT.md)
+or `## data boundary` (PIPELINE.md)."
+
+**If no uncovered modules were found** in Step 2, output instead:
+
+```
+### Coverage Status
+All {N} domain modules have specs. No uncovered modules found.
+
+Next steps:
+- `/wyx:concept drift` — check spec freshness (semantic analysis)
+- `/wyx:map` — regenerate ARCHITECTURE.md if specs have changed
+```
+
+Then skip to Suggested Documentation Updates (omit Recommended Commands and drift line).
+
+**Otherwise**, include the drift recommendation and continue with the sections below.
 
 Run `/wyx:concept drift` to check spec freshness (semantic analysis, not mtime).
 
