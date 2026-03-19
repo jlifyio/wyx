@@ -7,6 +7,9 @@
 Thumbs.db
 Desktop.ini
 
+# Docs archive
+docs/archive/
+
 # Editor
 *.swp
 *.swo
