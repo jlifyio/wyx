@@ -159,3 +159,50 @@ Replace all "enforces/prevents" language with "injects" or "checks against." wyx
 - Messaging is technically accurate but less punchy
 - Builds trust with skeptical developer audiences
 - README tagline settled on "injects them into Claude's context" rather than "enforces boundaries"
+
+---
+
+## DEC-008: Known Coupling — Phase 1 Format and Calibration Only
+
+**Date:** 2026-03-21
+**Status:** Accepted
+**Source:** docs/archive/superpowers/specs/2026-03-21-v0.20.0-known-coupling-multilang-drift-design.md
+
+### Context
+2/3 field-tested projects (DenkiOffice and WineLevel3) independently invented ad-hoc sections for documenting intentional cross-concept data access (`## boundary exceptions`, direct SQL writes). The pattern was real but unstandardized — each project formatted it differently, and drift detection treated documented and undocumented coupling identically (both Critical severity).
+
+### Decision
+Standardize `## known coupling` as an optional CONCEPT.md section with a prescribed format (resource, access pattern, reason, resolution status). Phase 1 includes format definition and drift calibration only — documented coupling = Low severity, undocumented = Critical. Hook injection (extracting known coupling into boundary context) deferred to Phase 2.
+
+### Alternatives Considered
+- **Hook injection in Phase 1**: Would immediately surface coupling in boundary context during edits. Rejected — insufficient adoption data (N=3 projects) to justify hook complexity. Phase 2 condition: 5+ entries across 2+ projects.
+- **`:::coupling` classDef in Mermaid maps**: Visual representation of coupling in architecture diagrams. Deferred — depends on Phase 2 hook injection.
+- **No standardization**: Let each project invent its own format. Rejected — 2/3 independent invention signals a real pattern; inconsistency prevents calibration rules.
+
+### Consequences
+- Drift calibration now distinguishes documented vs undocumented coupling (Low vs Critical)
+- Phase 2 has explicit trigger condition — prevents premature hook complexity
+- Known coupling section is explicitly "structural necessities, not a tech debt parking lot"
+- Prevention gap (forgotten spec updates) remains unresolved — all 3 projects report it, but no clean solution within current hook architecture (PostToolUse rejected for hook fatigue, CI for LLM cost)
+
+---
+
+## DEC-009: Multi-Language Drift — Documentation Over Tooling
+
+**Date:** 2026-03-21
+**Status:** Accepted
+**Source:** docs/archive/superpowers/specs/2026-03-21-v0.20.0-known-coupling-multilang-drift-design.md
+
+### Context
+StockRecommendation project had an `exit_reason` enum mismatch between its Rust CLI and TypeScript frontend, caught during drift detection. The question was whether drift tooling needed language-specific awareness or multi-language scanning logic.
+
+### Decision
+Add a 2-line documentation note to drift-detection.md explaining that drift detection is language-agnostic (Claude reads Rust, Python, Go, etc.) and multi-language projects should scope drift checks to all implementation directories. No tooling changes.
+
+### Alternatives Considered
+- **Language-specific scanning logic**: Multi-language file discovery and cross-referencing. Rejected — LLM-based drift already handles any language natively. The gap is user awareness, not tooling capability.
+
+### Consequences
+- Zero code change — documentation fix only
+- Users in multi-language projects must manually scope drift checks or colocate specs per language directory
+- If cross-language enum mismatches recur despite documentation, revisit with automated cross-directory scanning
