@@ -212,7 +212,7 @@ Add a 2-line documentation note to drift-detection.md explaining that drift dete
 ## DEC-010: Hook Architecture Frozen — No Expansion Beyond PreToolUse Context Injection
 
 **Date:** 2026-03-21 (consolidation of decisions from v0.17 through v0.21)
-**Status:** Accepted
+**Status:** Partially superseded by DEC-014
 **Source:** MEMORY.md debate records: v0.17 Improvement (2026-03-10), v0.20.0 Field Feedback (2026-03-21), v0.21 Field Feedback (2026-03-21)
 
 ### Context
@@ -224,16 +224,16 @@ wyx's hook architecture is limited to PreToolUse context injection (Write/Edit/N
 ### Alternatives Considered
 - **Static import analysis in PreToolUse hook** (v0.17, DA 9/10): PreToolUse fires *before* the write — disk file is stale, so import analysis reads the previous version. Multi-language regex is brittle. The LLM already performs import analysis better than shell scripts. Fatal timing flaw.
 - **Pre-commit hook for drift** (v0.17): Drift detection requires LLM invocation (comparing spec against code semantics). Git hooks cannot invoke Claude. Pre-commit is architecturally incompatible with LLM-based drift.
-- **PostToolUse hooks** (v0.20.0: all 2/2/2, upheld v0.21: all 2/2/2): Doubles hook surface area. PreToolUse assumes spec is authoritative; PostToolUse assumes it might be stale — contradictory signals in the same edit cycle. Also causes hook fatigue (user sees both pre and post messages per edit). Structural rejection — not revisitable without fundamental rethink.
+- **PostToolUse hooks** (v0.20.0: all 2/2/2, upheld v0.21: all 2/2/2): Originally rejected — "contradictory signals" argument claimed PreToolUse assumes spec is authoritative while PostToolUse assumes it might be stale. **Overturned in v0.22.0** (see DEC-014): the "contradictory signals" framing was a false dichotomy. PreToolUse=guidance, PostToolUse=verification is complementary.
 - **Multi-IDE support** (v0.17): wyx is deeply coupled to the Claude Code plugin API (PreToolUse events, hookSpecificOutput.additionalContext, SKILL.md format). Supporting other IDEs would be a different product, not a feature addition.
 - **Plugin agents** (rejected 3 times: 2026-02-16, 02-17, 03-10): Agent hooks add 10-30s latency per edit. Isolated agent context is net-negative — agents cannot read the conversation context that makes boundary declarations actionable.
 - **CI drift integration** (v0.20.0): Drift detection requires LLM invocation — running Claude in CI hits cost and infrastructure barriers ("LLM wall"). Automating drift in CI transforms a plugin into a platform dependency.
 
 ### Consequences
-- Prevention gap between per-edit hooks and manual drift remains unresolved — all 3 projects feel it
+- Prevention gap between per-edit hooks and manual drift partially addressed by PostToolUse context reinforcement (DEC-014)
 - Any future hook expansion requires: (1) new Claude Code platform capability, or (2) fundamental architecture change
-- PostToolUse is a structural rejection — not deferral. Won't be revisited at N=10
-- Revisit if Claude Code adds session-level hook state or non-LLM drift detection becomes feasible
+- PostToolUse structural rejection **overturned** in v0.22.0 — see DEC-014
+- Static import analysis, pre-commit, CI drift, multi-IDE, and plugin agents rejections still stand
 
 ---
 
@@ -315,7 +315,31 @@ Reject all feature-depth proposals that don't fix existing bugs or output proble
 - **Premature proposals** (v0.21, C9/C10/C11): Various incremental features without clear problem statements. Rejected as premature — no evidence of user need.
 
 ### Consequences
-- wyx feature set frozen at v0.21.1 for foreseeable future — next investment is adoption
+- wyx feature set frozen at v0.21.1 for foreseeable future — next investment is adoption (note: PostToolUse context reinforcement added in v0.22.0 per DEC-014, overturning the PostToolUse rejection in DEC-010)
 - Each rejection documented with specific downside, enabling future re-evaluation when conditions change
 - "N=10" and "2+ developers" serve as revisit triggers for deferred proposals (PM lowered B8 from N=10 to N=5)
 - DA insight stands: "Most valuable investment is 4th project adoption, not feature depth"
+
+---
+
+## DEC-014: PostToolUse Context Reinforcement — Overturning the "Contradictory Signals" Rejection
+
+**Date:** 2026-03-22
+**Status:** Accepted (supersedes PostToolUse rejection in DEC-010)
+**Source:** MEMORY.md debate record: PostToolUse Debate (2026-03-22, 3-agent debate: ADV+ARCH+DA, Opus)
+
+### Context
+PostToolUse hooks were rejected twice (v0.20.0 and v0.21.0, all 2/2/2) based on the "contradictory signals" argument: PreToolUse assumes spec is authoritative while PostToolUse assumes it might be stale. In v0.22.0, all three debate agents independently withdrew this argument after recognizing it as a false dichotomy.
+
+### Decision
+Add a PostToolUse hook (~90 lines) that reinjects the `## dependencies` list from the nearest CONCEPT.md after each file edit. The hook is language-agnostic — no import parsing, no language-specific code. Silent when: no spec found, no `## dependencies` section, editing inert files, or editing spec files themselves. PreToolUse provides full boundary context before the edit (guidance); PostToolUse provides the dependency list after (verification prompt). New architectural principle: **"hooks extract and inject; the LLM judges."**
+
+### Alternatives Considered
+- **Import-checking PostToolUse** (v0.22.0 debate, 3/3/6 ARCH, 5/5/4 DA): Concept-name-to-import-path mapping has no clean bash solution. Language-specific code violates wyx's language-agnostic principle. ADV iterated the design 3x through debate pressure before arriving at context reinforcement.
+- **No PostToolUse** (v0.20.0/v0.21.0 status quo): The "contradictory signals" rejection was a false dichotomy — guidance before and verification after are complementary, not contradictory. The previous DA attacked the concept instead of the mechanism.
+
+### Consequences
+- wyx now has 3 hooks: SessionStart + PreToolUse + PostToolUse (was 2)
+- Prevention gap partially addressed — PostToolUse prompts the LLM to verify its edit against declared dependencies
+- Hook fatigue risk mitigated by silent-on-clean design (PostToolUse only outputs when a CONCEPT.md with dependencies exists nearby)
+- DA self-correction recorded: "Previous DA should have challenged the MECHANISM, not the CONCEPT. A DA's job is precision, not obstruction."
