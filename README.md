@@ -1,6 +1,6 @@
 # wyx
 
-[![Version](https://img.shields.io/badge/version-0.21.1-blue)](https://github.com/jlifyio/wyx/releases/tag/v0.21.1) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-orange)](https://claude.com/claude-code)
+[![Version](https://img.shields.io/badge/version-0.22.0-blue)](https://github.com/jlifyio/wyx/releases/tag/v0.22.0) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-orange)](https://claude.com/claude-code)
 
 **Architecture guardrails for Claude Code** — teach Claude your module boundaries. wyx automatically injects them into Claude's context on every write.
 
@@ -24,7 +24,7 @@ graph LR
 + import { getOrderTotal } from "../orders/service"
 ```
 
-You write a short spec describing your module boundaries. wyx injects those boundaries into Claude's context on every write — Claude sees them and self-checks before each edit.
+You write a short spec describing your module boundaries. wyx injects those boundaries into Claude's context before and after every write — Claude sees them before each edit and gets a dependency reminder after.
 
 **In testing (N=6 features, 2 projects):** 33 cross-module imports checked, 0 violations. Small sample — see [methodology](#test-results-and-methodology) for caveats. Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
 
@@ -54,7 +54,7 @@ Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support a
 - Orders: read-only via getOrderTotal()
 ```
 
-**2. wyx injects it automatically.** Whenever Claude writes or edits a file near this spec, the PreToolUse hook injects the boundary declarations (`## interactions`, `## dependencies`) into Claude's context. Claude sees the boundaries and self-checks before each write.
+**2. wyx injects it automatically.** Whenever Claude writes or edits a file near this spec, the PreToolUse hook injects the boundary declarations (`## interactions`, `## dependencies`) into Claude's context before the edit. After the edit, the PostToolUse hook reinjects the dependency list as a focused reminder — catching violations that slip through during multi-file sequences.
 
 **3. Drift detection catches divergence.** Run `/wyx:concept drift` to find where code has drifted from specs:
 
@@ -83,7 +83,7 @@ Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support a
 
 | | CLAUDE.md rules | wyx |
 |---|---|---|
-| **Delivery** | Loaded in system context, project-wide | Injected per-write, module-specific |
+| **Delivery** | Loaded in system context, project-wide | Injected before and after each write, module-specific |
 | **Specificity** | Project-wide guidelines | Per-module boundary declarations |
 | **Staleness** | No warning when rules diverge from code | Drift detection catches divergence |
 | **Colocation** | Separate from implementation | Specs live next to the code they describe |
@@ -228,7 +228,7 @@ CLAUDE_PROJECT_DIR=/path/to/project bash scripts/session-start.sh
 wyx warns at session start. Install from [jqlang.github.io](https://jqlang.github.io/jq/download/). Without jq, boundary injection is disabled.
 
 **Q: Does wyx block bad code?**
-No. wyx injects boundary context — Claude sees it and self-checks. It's advisory, not enforcement. In testing with Opus-class models, compliance was consistent.
+No. wyx injects boundary context before and after each edit — Claude sees it and self-checks. It's advisory, not enforcement. In testing with Opus-class models, compliance was consistent.
 
 **Q: Does wyx catch writes via Bash (`echo > file`, `sed -i`)?**
 No. The hook matches Write, Edit, and NotebookEdit only. File modifications through Bash bypass the hook entirely.
@@ -254,10 +254,11 @@ wyx adapts ideas from two sources for LLM-assisted development:
 .claude-plugin/
 ├── plugin.json              # Plugin manifest
 hooks/
-└── hooks.json               # SessionStart + PreToolUse drift context
+└── hooks.json               # SessionStart + PreToolUse + PostToolUse hooks
 scripts/
 ├── session-start.sh         # Artifact coverage + drift staleness + uncovered modules
-└── drift-context.sh         # Boundary injection near specs
+├── drift-context.sh         # Boundary injection near specs (PreToolUse)
+└── post-check.sh            # Dependency list reminder after edits (PostToolUse)
 skills/
 ├── audit/SKILL.md           # /wyx:audit — project audit & command planner
 ├── concept/SKILL.md         # /wyx:concept — bounded concept design + drift detection

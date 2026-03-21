@@ -10,7 +10,7 @@ Adapts ideas from two sources:
 - **WYSIWID** (Meng & Jackson, MIT) — concept spec format and boundary declarations
 - **WYWIWID** (Dr. Ernie) — evidence-based legibility concepts (concept drift detection, pipeline invariants)
 
-This is a Claude Code plugin (5 SKILL.md files + 2 hooks), not a CLI tool or runtime engine. The primary differentiator is the hooks — the skills are convenience packaging for generating the specs that fuel the hooks.
+This is a Claude Code plugin (5 SKILL.md files + 3 hooks), not a CLI tool or runtime engine. The primary differentiator is the hooks — the skills are convenience packaging for generating the specs that fuel the hooks.
 
 ## Architecture
 
@@ -18,10 +18,11 @@ This is a Claude Code plugin (5 SKILL.md files + 2 hooks), not a CLI tool or run
 .claude-plugin/
 ├── plugin.json             # Plugin manifest (name: "wyx")
 hooks/
-└── hooks.json              # SessionStart + PreToolUse hooks (command type only)
+└── hooks.json              # SessionStart + PreToolUse + PostToolUse hooks (command type only)
 scripts/
 ├── session-start.sh        # Artifact coverage + drift/ARCHITECTURE.md staleness + uncovered modules (with exclusions)
-└── drift-context.sh        # Boundary injection near specs + CRLF handling + shadowing mitigation
+├── drift-context.sh        # Boundary injection near specs + CRLF handling + shadowing mitigation
+└── post-check.sh           # Post-edit dependency list reinforcement (silent when no spec/deps)
 skills/
 ├── audit/SKILL.md          # /wyx:audit — project audit & command planner
 ├── concept/SKILL.md        # /wyx:concept — bounded concept design + drift detection
@@ -48,6 +49,8 @@ skills/
 
 **PreToolUse** (command, matcher: `Write|Edit|NotebookEdit`): When writing near a spec file, outputs boundary declarations via `hookSpecificOutput.additionalContext`. Extracts `## interactions` and `## dependencies` from CONCEPT.md, and `## data boundary` from PIPELINE.md. SYNCS.md is listed in spec context but does not stop traversal or inject boundaries. Resolves relative file paths to absolute. Handles both `file_path` (Write/Edit) and `notebook_path` (NotebookEdit) via jq fallback chain. Skips inert files (`.json`, `.jsonl`, `.lock`, `.log`, `.txt`) — no context injection for non-code files. Handles CRLF line endings via `tr -d '\r'` in extract_section. When no CONCEPT.md is co-located with the stopping spec (e.g., PIPELINE.md-only directory), looks for an ancestor CONCEPT.md and injects its boundaries with a `[SHADOWED]` caveat. Enables LLM self-checking against declared boundaries. **This is the core differentiator of wyx** — concept specs are the fuel, this hook is the engine.
 
+**PostToolUse** (command, matcher: `Write|Edit|NotebookEdit`): After a file edit near a CONCEPT.md, reinjects the `## dependencies` list as a focused reminder. Complements PreToolUse: PreToolUse provides full boundary context before the edit (guidance), PostToolUse provides the dependency list after (verification prompt). Walks upward to find the nearest CONCEPT.md only (not PIPELINE.md or SYNCS.md — they lack dependency lists). Silent when: no spec found, no `## dependencies` section, editing inert files, or editing spec files themselves. ~90 lines, language-agnostic, no import parsing. Design principle: **hooks extract and inject; the LLM judges**.
+
 ### Key Constraints
 
 - Each skill is a self-contained SKILL.md (YAML frontmatter + markdown body), with optional references/ for detailed content loaded on demand (progressive disclosure)
@@ -55,7 +58,7 @@ skills/
 - **One spec per directory**: Only `CONCEPT.md`, `PIPELINE.md`, `SYNCS.md` are recognized (no `CONCEPT-*.md` glob patterns). Each concept gets its own subdirectory. This ensures the PreToolUse hook injects only relevant boundary declarations.
 - **Stop-at-first traversal**: `drift-context.sh` walks upward from the edited file and stops at the first directory containing a boundary-contributing spec (CONCEPT.md or PIPELINE.md). SYNCS.md is listed in spec context but does not stop traversal or inject boundary declarations. If no CONCEPT.md is co-located with the stopping spec (e.g., PIPELINE.md-only directory), the hook continues upward to find an ancestor CONCEPT.md and injects its boundaries with a `[SHADOWED]` caveat (see anti-patterns in concept/SKILL.md).
 - Specs are documentation, not enforcement — drift detection catches divergence
-- Both hooks are `type: "command"` only (no prompt or agent hooks)
+- All three hooks are `type: "command"` only (no prompt or agent hooks)
 
 ## Working in This Repository
 
@@ -65,7 +68,7 @@ This is a plugin repository. There is no build step, test suite, or package.json
 
 **Marketplace**: Hosted separately at [jlifyio/claude-plugins](https://github.com/jlifyio/claude-plugins). Install: `/plugin marketplace add jlifyio/claude-plugins` then `/plugin install wyx@jlifyio`.
 
-**Runtime dependency**: `jq` — used by `drift-context.sh` for JSON parsing. Without it, drift context is a no-op (the SessionStart hook warns users). Users lose boundary checking.
+**Runtime dependency**: `jq` — used by `drift-context.sh` and `post-check.sh` for JSON parsing. Without it, drift context and post-edit checks are no-ops (the SessionStart hook warns users). Users lose boundary checking.
 
 **Editing skills**: Each SKILL.md is self-contained. Edit the markdown body for behavior changes; edit YAML frontmatter for metadata (name, description, argument-hint, allowed-tools).
 
@@ -95,6 +98,10 @@ CLAUDE_PROJECT_DIR=/path/to/project bash scripts/session-start.sh
 echo '{"tool_name":"Write","tool_input":{"file_path":"/path/to/project/src/module/service.ts","content":"code"}}' \
   | CLAUDE_PROJECT_DIR=/path/to/project bash scripts/drift-context.sh
 
+# Test post-edit check (simulated PostToolUse input)
+echo '{"tool_name":"Write","tool_input":{"file_path":"/path/to/project/src/module/service.ts","content":"code"},"tool_response":{"success":true}}' \
+  | CLAUDE_PROJECT_DIR=/path/to/project bash scripts/post-check.sh
+
 # Validate plugin structure
 python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))" && echo "plugin.json OK"
 python3 -c "import json; json.load(open('hooks/hooks.json'))" && echo "hooks.json OK"
@@ -103,7 +110,7 @@ for s in audit concept map pipeline sync; do test -f skills/$s/SKILL.md && echo 
 
 ## Shell Script Conventions
 
-Both scripts use `set -euo pipefail`. Key patterns to preserve when editing:
+All three scripts use `set -euo pipefail`. Key patterns to preserve when editing:
 
 **Trailing slash stripping**: `PROJECT_DIR="${CLAUDE_PROJECT_DIR%/}"` — double-slash breaks `case` pattern matching against `$PROJECT_DIR/`.
 
@@ -119,7 +126,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 **Relative path resolution**: Files from tool input may be relative — resolve with `case "$file_path" in /*) ;; *) file_path="$PROJECT_DIR/$file_path" ;; esac`.
 
-**PreToolUse output format**: Must use `hookSpecificOutput.additionalContext` (structured JSON via `jq -n`). Plain text stdout is only shown in verbose mode per official docs.
+**PreToolUse/PostToolUse output format**: Must use `hookSpecificOutput.additionalContext` (structured JSON via `jq -n`). Plain text stdout is only shown in verbose mode per official docs.
 
 **JSONL reading**: Use `grep -v '^[[:space:]]*$' file | tail -1` instead of `tail -1` — Claude's Write tool may append trailing empty lines.
 
@@ -144,6 +151,8 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **Audit is discovery-only**: `/wyx:audit` scans and reports but does not generate specs or check staleness (defers to `/wyx:concept drift` for semantic analysis — mtime-based staleness produced 100% false positives in testing). A full orchestrator was rejected (3-agent debate) for context window exhaustion, template drift, and quality degradation.
 - **Integration is a platform constraint**: The 5 skills operate independently (no skill-to-skill invocation in Claude Code). This is structural, not a bug.
 - **No auto-invocation rules**: CLAUDE.md rules telling users to "check specs before imports" are redundant — the PreToolUse hook does this automatically.
+- **PostToolUse = context reinforcement, not import checking**: PostToolUse reinjects the dependency list only — no import parsing, no language-specific code. Previous proposals for mechanical import checking were rejected (3-agent debate): concept-name-to-import-path mapping has no clean bash solution, and language-specific code violates wyx's language-agnostic principle. Architectural rule: **hooks extract and inject; the LLM judges**.
+- **PostToolUse "contradictory signals" overturned**: The v0.20.0/v0.21.0 rejection was withdrawn (3-agent debate). PreToolUse=guidance, PostToolUse=verification is complementary, not contradictory. The previous DA attacked the concept instead of the mechanism.
 
 ## Test Results
 

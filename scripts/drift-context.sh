@@ -188,7 +188,7 @@ if [ -n "$found_specs" ]; then
       ctx="${ctx}You are editing a spec file. Ensure changes reflect the current implementation and update boundaries if needed." ;;
     *)
       if [ -n "$boundary_context" ]; then
-        ctx="${ctx}"$'\nDeclared boundaries:\n'"${boundary_context}"$'\nVerify this edit does not introduce cross-module imports or data access patterns that violate these declared boundaries.'
+        ctx="${ctx}"$'\nDeclared boundaries:\n'"${boundary_context}"$'\nBEFORE writing imports, verify each import target against ## dependencies above. Imports from concepts NOT listed in ## dependencies are boundary violations.'
       else
         ctx="${ctx}Verify changes align with declared actions, invariants, and operational principles."
       fi ;;

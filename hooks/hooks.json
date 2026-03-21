@@ -1,5 +1,5 @@
 {
-  "description": "wyx hooks: artifact coverage report + drift context with boundary declarations (command)",
+  "description": "wyx hooks: artifact coverage + drift context + post-edit dependency check (command)",
   "hooks": {
     "SessionStart": [
       {
@@ -20,6 +20,18 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/drift-context.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/post-check.sh",
             "timeout": 5
           }
         ]
