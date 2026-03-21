@@ -9,6 +9,8 @@ When `$ARGUMENTS` starts with `drift`, scan for spec-code divergence.
 3. **Compare**: Check for divergence in each category (see below)
 4. **Report**: Produce a structured drift report
 
+**Multi-language projects**: When a concept has implementations in multiple languages (e.g., TypeScript frontend + Rust CLI), scope the drift check to include all relevant directories, or colocate a CONCEPT.md near each language's implementation. Drift detection is language-agnostic — Claude reads any language.
+
 ## Parallel scanning
 
 When 3+ specs are found, use `Agent` with `subagent_type: "Explore"` to scan specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable) — safe for drift analysis.
@@ -59,6 +61,7 @@ When 3+ specs are found, use `Agent` with `subagent_type: "Explore"` to scan spe
 - When the same Low finding repeats across multiple actions in one spec (e.g., same undocumented parameter in 3+ actions), count as a single Low with a note listing affected actions. Deduplicated Lows count as 1 in the `low_by_spec` JSONL field.
 - Before reporting a finding as Medium or higher, verify it exists in the current code with grep or file read. Do not report drift based on memory or assumptions from prior file reads.
 - If a single spec accumulates more than 5 Low findings (after deduplication), note this in the drift report summary and suggest re-evaluating whether the spec's `## actions` or `## state` adequately describes the module's current public surface.
+- Cross-concept data access documented in the source concept's `## known coupling` section should be treated as Low severity rather than Critical/High. Undocumented cross-concept data access remains Critical.
 
 ## Drift Report Format
 

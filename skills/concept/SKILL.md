@@ -64,6 +64,11 @@ Write scenarios that define correct behavior. Multiple scenarios OK.]
 ## dependencies
 [Optional. External concepts this module depends on.]
 - [ExternalConcept]: [what this concept needs from it]
+
+## known coupling
+[Optional. Intentional cross-concept data access that bypasses action interfaces.
+Each entry: resource, access pattern, reason, and resolution status.]
+- [ExternalConcept/resource]: [access pattern] — reason: [why] — status: keep|refactor|defer
 ```
 
 ## Design Rules
@@ -79,6 +84,8 @@ Apply these five rules when generating or reviewing a concept spec:
 4. **Actions as interface**: All external access to a concept goes through its declared actions. No reaching into internal implementation details.
 
 5. **Actions as declarations, not events**: Actions define what the module can do, not what happens when it runs. Do not derive runtime infrastructure (logging, metrics, interceptors, middleware) from action declarations. Cross-cutting infrastructure that wraps multiple concepts should be its own concept with its own spec.
+
+When a concept necessarily accesses another concept's data store directly (e.g., seeding rows in another concept's table, cross-concept SQL reads for denormalization), document it in `## known coupling` rather than leaving it as an undocumented boundary violation. This section is for structural necessities — not a parking lot for unresolved tech debt. Each entry must state why the coupling exists and its resolution status (keep/refactor/defer).
 
 ## Retrofit Mode Guidelines
 

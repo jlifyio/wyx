@@ -24,6 +24,15 @@ Determine the mode from the argument:
 - **No arguments**: **Full project mode** — find and map all wyx specs across the entire project. This is the most common usage. For projects with 15+ concepts, recommend scoped mode to keep the graph readable.
 - **Zero specs found**: Output "No wyx specs found. Run `/wyx:concept` first to create your first spec." and stop.
 
+## Pre-check: Skip if Clean
+
+Before reading all specs, check if regeneration is needed:
+
+1. If `ARCHITECTURE.md` exists in the target directory, compare its modification time against all spec files
+2. Use `find . -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" -newer ARCHITECTURE.md` (scoped to path if given) to find specs modified since last generation
+3. If no spec file is newer, report: "ARCHITECTURE.md is up to date (generated: [date], no spec changes since)" and stop
+4. If any spec file is newer, or `ARCHITECTURE.md` doesn't exist, proceed to Step 1
+
 ## Step 1: Discover All Specs
 
 1. Glob for `**/CONCEPT.md`, `**/PIPELINE.md`, and `**/SYNCS.md` (scoped to path if given)
@@ -32,7 +41,7 @@ Determine the mode from the argument:
 
 ### Parallel reading
 
-When 5+ specs are found, use `Agent` with `subagent_type: "Explore"` to read specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable).
+When 10+ specs are found, use `Agent` with `subagent_type: "Explore"` to read specs in parallel. Below 10, direct Read is faster (agent spawning overhead exceeds read time). Explore agents are read-only (Write/Edit structurally unavailable).
 
 - Spawn one Explore agent per 3-5 specs grouped by directory proximity
 - Each agent reads the specs and returns: type, name, directory, and key sections (interactions, dependencies, data boundary, coordination graph)
@@ -48,9 +57,16 @@ Derive the graph edges from specs using this **priority order** (higher = more a
 4. **PIPELINE.md `## data boundary`** — Each ownership declaration shows which concept owns which data.
 5. **PIPELINE.md `## purpose`** — Used for pipeline node labels.
 
-**Edge direction convention**: Provider TO consumer. "A depends on B" means `B --> A`. "A calls B.action()" means `A --> B`. Ambiguous direction: use `-.->` (dashed).
+**Edge direction convention**: Provider TO consumer. "A depends on B" means `B --> A`. "A calls B.action()" means `A --> B`.
+
+**Dashed edge convention** (`-.->`): Use for relationships that are indirect, optional, or navigational rather than hard dependencies:
+- Ambiguous direction (unclear provider/consumer)
+- Optional foreign keys or soft references (e.g., nullable FK, lookup by convention)
+- Navigational associations (read-only cross-references, not ownership)
 
 **Edge labels**: Use the EXACT verb from the spec. No paraphrasing. If spec says "calls generate()", label is `generate`. If spec says "reads recommendations", label is `reads recs`.
+
+**Unspecced references**: When a SYNCS.md `## coordination graph` or CONCEPT.md `## interactions` references a concept that has no corresponding CONCEPT.md, include it as a regular node in the graph and flag it in the `## coverage` section (e.g., "Referenced but unspecced: Unlinked (in SYNCS.md)"). Do not use `:::external` — these are internal modules that lack specs, not external systems.
 
 ## Step 3: Build Node IDs
 
