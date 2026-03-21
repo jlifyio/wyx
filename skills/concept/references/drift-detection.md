@@ -19,14 +19,27 @@ When 3+ specs are found, use `Agent` with `subagent_type: "Explore"` to scan spe
 - Each agent reads the spec + implementation code and returns findings in the drift report format (category, severity, file:line, description)
 - After all agents complete, merge findings into a single drift report, then run cross-spec validation and systemic pattern aggregation in the main context
 
+### Agent output requirements
+
+Each agent must output a verdict for every applicable check category (e.g., "Missing action: ✓ clean", "Changed signature: Low — naming convention"). Omitted categories are flagged as "unverified" during the merge step.
+
+### Agent prompt template
+
+When spawning Explore agents for parallel drift scanning, include this in each agent prompt:
+
+1. The assigned spec paths and their types (CONCEPT/PIPELINE/SYNCS)
+2. The full "Drift calibration" block from this document (verbatim)
+3. The relevant check table(s) for the assigned spec types
+4. Output requirement: verdict for every check category — omitted = unverified
+
 ## What to check for each CONCEPT.md
 
 | Category | How to detect | Severity |
 |----------|--------------|----------|
 | **Missing action** | Function/method exists in code but not declared in spec `## actions` | Medium |
 | **Removed action** | Action declared in spec but function no longer exists in code | High |
-| **Changed signature** | Function parameters or return type differ from spec declaration | Medium |
-| **New state** | New table column, class field, or persistent data not in spec `## state` | Medium |
+| **Changed signature** | Function parameters and/or return type differ from spec declaration — trace actual return statements, not just type annotations | Medium |
+| **New state** | New table column, class field, or persistent data not in spec `## state`. Also verify persistent storage definitions (schema files, migrations) for state not reflected in spec or application types | Medium |
 | **New dependency** | Import from a concept not listed in spec `## dependencies` | High |
 | **Boundary violation** | Direct import of another concept's internals (not through declared actions) | Critical |
 | **Cross-cutting parameter** | A parameter appears in 3+ action implementations but is not documented in any action signature in `## actions` | Medium |

@@ -151,6 +151,8 @@ procedure, check tables, calibration rules, and report format.
 
 ## When Updating an Existing Concept
 
+For modules that already have specs, prefer **spec-first updates**: modify `## actions` or `## state` in CONCEPT.md before implementing the change, so the PreToolUse hook injects updated boundaries immediately. Retrofit mode (code first → spec after) remains the right approach for initial spec creation of existing code.
+
 If `CONCEPT.md` already exists for the module:
 
 1. Read the existing spec

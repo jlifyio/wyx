@@ -31,7 +31,7 @@ Before reading all specs, check if regeneration is needed:
 1. If `ARCHITECTURE.md` exists in the target directory, compare its modification time against all spec files
 2. Use `find . -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" -newer ARCHITECTURE.md` (scoped to path if given) to find specs modified since last generation
 3. If no spec file is newer, report: "ARCHITECTURE.md is up to date (generated: [date], no spec changes since)" and stop
-4. If any spec file is newer, or `ARCHITECTURE.md` doesn't exist, proceed to Step 1
+4. If any spec file is newer, read only the graph-contributing sections (`## interactions`, `## dependencies`, `## data boundary`, `## coordination graph`) of changed specs. If those sections are unchanged (compare via `git diff` or direct inspection), report: "ARCHITECTURE.md is up to date (spec metadata changed, graph sections unchanged)" and stop. Otherwise, or if `ARCHITECTURE.md` doesn't exist, proceed to Step 1
 
 ## Step 1: Discover All Specs
 
