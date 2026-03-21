@@ -113,6 +113,8 @@ After checking each spec individually, cross-validate references between spec ty
 | **PIPELINE→CONCEPT name mismatch** | A PIPELINE.md `## stages` or `## data boundary` references a concept action name that doesn't match any declared action in the target CONCEPT.md `## actions` | High |
 | **SYNCS→CONCEPT missing reference** | A SYNCS.md sync block references `Concept.action` where the action doesn't exist in the target CONCEPT.md | High |
 | **SYNCS→CONCEPT missing participant** | A SYNCS.md sync block names a concept that has no corresponding CONCEPT.md | Medium |
+| **CONCEPT→CONCEPT missing action** | `## interactions` references `OtherConcept.actionName()` (explicit method-call syntax only) but action doesn't exist in target CONCEPT.md `## actions` | High |
+| **CONCEPT→CONCEPT missing concept** | `## dependencies` references a concept name with no corresponding CONCEPT.md | Medium |
 
 Report mismatches in the drift report after per-spec results:
 
@@ -144,6 +146,7 @@ Systemic patterns suggest cross-cutting concerns rather than individual spec dri
 **Phase 1 — Audit (read-only):**
 1. Present the full report to the user
 2. For each drifted spec, ask: "Update the spec to match code, or is this a code bug?"
+   For each finding, briefly note whether the spec or the code appears more current, to help the user decide the fix direction (update spec vs fix code).
 3. When findings indicate structural issues (boundary violations, state overlap,
    cross-cutting patterns), note which Design Rule (1-5) applies and suggest the
    appropriate wyx command — whether updating an existing spec or creating a new one

@@ -60,6 +60,7 @@ Write scenarios that define correct behavior. Multiple scenarios OK.]
 ## interactions
 [Optional. How this concept coordinates with others.]
 - when [ExternalConcept/action] completes, [this concept/action] should follow
+Use `ConceptName.actionName()` syntax for cross-concept references — these are validated during drift detection.
 
 ## dependencies
 [Optional. External concepts this module depends on.]
