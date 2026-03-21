@@ -206,3 +206,116 @@ Add a 2-line documentation note to drift-detection.md explaining that drift dete
 - Zero code change — documentation fix only
 - Users in multi-language projects must manually scope drift checks or colocate specs per language directory
 - If cross-language enum mismatches recur despite documentation, revisit with automated cross-directory scanning
+
+---
+
+## DEC-010: Hook Architecture Frozen — No Expansion Beyond PreToolUse Context Injection
+
+**Date:** 2026-03-21 (consolidation of decisions from v0.17 through v0.21)
+**Status:** Accepted
+**Source:** MEMORY.md debate records: v0.17 Improvement (2026-03-10), v0.20.0 Field Feedback (2026-03-21), v0.21 Field Feedback (2026-03-21)
+
+### Context
+Across 4 debate rounds (v0.17, v0.17.1, v0.20.0, v0.21), 6 proposals attempted to expand wyx's hook architecture beyond the current PreToolUse context injection. Each was independently rejected by agent teams (3-6 agents per debate, all Opus).
+
+### Decision
+wyx's hook architecture is limited to PreToolUse context injection (Write/Edit/NotebookEdit matcher). No additional hook types, no static analysis, no CI integration, no multi-IDE support. The architecture is frozen at current maturity (N=3 projects, 1 developer).
+
+### Alternatives Considered
+- **Static import analysis in PreToolUse hook** (v0.17, DA 9/10): PreToolUse fires *before* the write — disk file is stale, so import analysis reads the previous version. Multi-language regex is brittle. The LLM already performs import analysis better than shell scripts. Fatal timing flaw.
+- **Pre-commit hook for drift** (v0.17): Drift detection requires LLM invocation (comparing spec against code semantics). Git hooks cannot invoke Claude. Pre-commit is architecturally incompatible with LLM-based drift.
+- **PostToolUse hooks** (v0.20.0: all 2/2/2, upheld v0.21: all 2/2/2): Doubles hook surface area. PreToolUse assumes spec is authoritative; PostToolUse assumes it might be stale — contradictory signals in the same edit cycle. Also causes hook fatigue (user sees both pre and post messages per edit). Structural rejection — not revisitable without fundamental rethink.
+- **Multi-IDE support** (v0.17): wyx is deeply coupled to the Claude Code plugin API (PreToolUse events, hookSpecificOutput.additionalContext, SKILL.md format). Supporting other IDEs would be a different product, not a feature addition.
+- **Plugin agents** (rejected 3 times: 2026-02-16, 02-17, 03-10): Agent hooks add 10-30s latency per edit. Isolated agent context is net-negative — agents cannot read the conversation context that makes boundary declarations actionable.
+- **CI drift integration** (v0.20.0): Drift detection requires LLM invocation — running Claude in CI hits cost and infrastructure barriers ("LLM wall"). Automating drift in CI transforms a plugin into a platform dependency.
+
+### Consequences
+- Prevention gap between per-edit hooks and manual drift remains unresolved — all 3 projects feel it
+- Any future hook expansion requires: (1) new Claude Code platform capability, or (2) fundamental architecture change
+- PostToolUse is a structural rejection — not deferral. Won't be revisited at N=10
+- Revisit if Claude Code adds session-level hook state or non-LLM drift detection becomes feasible
+
+---
+
+## DEC-011: Audit Scope — Read-Only Discovery with No Generated Artifacts
+
+**Date:** 2026-03-15 (consolidation of decisions from v0.18.1 through v0.21)
+**Status:** Accepted
+**Source:** MEMORY.md debate records: Audit Evolution (2026-03-15), v0.21 Field Feedback (2026-03-21)
+
+### Context
+After `/wyx:audit` shipped as a read-only scanner (DEC-001), 5 proposals across 2 debates attempted to expand its scope to include generated artifacts, persistent state, or analysis that duplicates existing capabilities.
+
+### Decision
+`/wyx:audit` remains read-only (`allowed-tools: Read, Glob, Grep`). It does not write files, track history, or duplicate analysis available in SessionStart or `/wyx:concept drift`.
+
+### Alternatives Considered
+- **ARCHITECTURE.md staleness check in audit** (v0.18.6, all 2/2/2): Exact duplicate of session-start.sh lines 103-111. Adding the same check to audit creates two sources of truth with no additional value.
+- **CLAUDE.md cross-reference validation** (v0.18.6, 3/2/2): Checking if CLAUDE.md prose references match actual specs requires free-form prose parsing — too brittle. False positives from partial matches or paraphrased descriptions would erode trust.
+- **Audit history JSONL** (v0.18.6, 2/2/2): Writing audit results to JSONL violates the v0.18.1 design constraint (Write excluded from allowed-tools). No consumer exists for the data — generating artifacts without consumers creates maintenance burden.
+- **Audit cache** (v0.21, C6): Write is not in audit's allowed-tools by design. Adding it would break the structural scope-creep prevention that makes audit trustworthy as a read-only tool.
+- **Drift history trend analysis** (v0.18.6, 7/4/3 → DEFER/REJECT): 60% functional overlap with SessionStart's existing drift reporting. N=1 project validation is insufficient for a trend analysis feature. Revisit at N=10+ projects.
+
+### Consequences
+- Audit cannot become stale (no generated artifacts to drift) — preserving DEC-001's key benefit
+- Users who want persistent tracking use `/wyx:concept drift` (which writes to JSONL by design)
+- SessionStart and audit have clean separation: SessionStart = smoke detection, audit = coverage analysis
+- DA meta-question stands: "When a tool reports 'nothing to do', the correct response is 'congratulations' — not 'let me find something to report.'"
+
+---
+
+## DEC-012: SessionStart Is Smoke Detection, Not Intelligence
+
+**Date:** 2026-03-13
+**Status:** Accepted
+**Source:** MEMORY.md debate record: Field Test Improvements (2026-03-13)
+
+### Context
+After audit shipped (v0.18.1), 2 proposals attempted to add LLM-level intelligence to the SessionStart shell hook — evaluating module behavioral cohesion and detecting "retained for future use" code patterns.
+
+### Decision
+SessionStart remains a shell-based smoke detector: file counting, mtime comparison, spec existence checks. LLM-level judgment belongs in `/wyx:audit` (which runs in Claude's context). The two-tier architecture (SessionStart = fast/dumb, audit = slow/smart) is correct.
+
+### Alternatives Considered
+- **Behavioral cohesion evaluation in SessionStart** (v0.18.1, 2/2/3): Shell scripts cannot perform LLM judgment. Evaluating whether a directory has "state + actions + operational principle" requires understanding code semantics — this is exactly what `/wyx:audit` does in Claude's context. Wrong layer for the task.
+- **"Retained for future use" drift flagging** (v0.18.1, 2/3/2): Detecting unused code patterns in shell is unreliable (requires parsing imports, understanding call graphs). This is not drift detection — it's dead code analysis, which is scope creep. Even if detectable, flagging it in SessionStart output creates noise for a rare edge case.
+
+### Consequences
+- SessionStart stays fast (~35ms worst case) — no LLM invocation, no complex analysis
+- Clean handoff: SessionStart flags "you have uncovered modules" → user runs `/wyx:audit` for details
+- Debate insight applied: "Hook-script sync is itself a drift problem" — keeping SessionStart simple reduces drift surface
+
+---
+
+## DEC-013: Feature Proposals Rejected at Current Maturity (N=3, 1 Developer)
+
+**Date:** 2026-03-21 (consolidation of rejections from v0.20.0 and v0.21)
+**Status:** Accepted
+**Source:** MEMORY.md debate records: v0.20.0 Field Feedback (2026-03-21), v0.21 Field Feedback (2026-03-21)
+
+### Context
+Across v0.20.0 (14 proposals) and v0.21 (23 proposals), a combined 16 feature proposals were rejected. While each had individual technical reasons, they share a common strategic principle: at N=3 projects with 1 developer, feature additions have negative expected value. The bottleneck is adoption breadth, not feature depth.
+
+### Decision
+Reject all feature-depth proposals that don't fix existing bugs or output problems. Strategic investment goes to adoption (4th project, 2nd developer) before new capabilities.
+
+### Alternatives Considered
+- **Type contracts in specs** (v0.20.0): Duplicates what TypeScript's compiler already checks. Adding type validation to specs creates a parallel system that must stay in sync with `tsconfig.json` — maintenance cost with no incremental benefit.
+- **Export diff for map changes** (v0.20.0): False positive rate too high. Mermaid output differences from whitespace, ordering, or LLM non-determinism would generate noise. `git diff` on deterministic output (ensured by 7 stability rules) is already accurate.
+- **Ghost detection via git diff** (v0.20.0): Detecting deleted-but-still-referenced code. `git diff` already provides this hint — building tooling around it adds complexity for a use case users can solve with existing git commands.
+- **Layer concept in specs** (v0.20.0): Architectural layering abstraction. Only validated on N=1 project — insufficient evidence that the abstraction generalizes. Risk of imposing structure that doesn't fit other codebases.
+- **Common parameter detection** (v0.20.0): Detecting shared parameters across concepts for extraction. Already exists as Retrofit step 6 in concept/SKILL.md — duplicate proposal.
+- **Change summary in drift output** (v0.20.0): Re-litigates the v0.19.0 "fixes not features" decision (DEC-003). Change summaries were considered and rejected in that round.
+- **Operational principle → test generation** (v0.20.0): Generating tests from CONCEPT.md operational principles. Scope creep — wyx produces specs, not test suites. Stale operational principles would generate wrong tests, amplifying the stale spec risk (worse than no tests).
+- **2-pass verification for drift** (v0.21, A4): Running drift twice to reduce false positives. Existing calibration rules (Low deduplication, >5 Low advisory, naming convention = Low) are sufficient. A second pass doubles drift scan time for marginal accuracy gain.
+- **Structural parsing for drift** (v0.21, B6): Parsing AST structure instead of LLM-based comparison. This is a feature, not a fix — and N=3 projects provide insufficient evidence that LLM-based drift is inadequate. Adding a parser creates a language-specific dependency that contradicts the language-agnostic design.
+- **Known gaps lifecycle tracking** (v0.21, C4): Tracking `## known gaps` entries through resolution. Deletion of resolved gaps is sufficient — lifecycle tracking adds state management complexity with no clear consumer.
+- **Systemic drift suppression** (v0.21, C1): Auto-suppressing drift findings seen N=3+ times. Deferred — pattern needs more data across projects to avoid masking real drift.
+- **Agent grouping optimization** (v0.21, C8): Batching Explore agent calls for efficiency. Deferred — requires N=2+ concurrent users to validate that agent overhead is the actual bottleneck.
+- **Premature proposals** (v0.21, C9/C10/C11): Various incremental features without clear problem statements. Rejected as premature — no evidence of user need.
+
+### Consequences
+- wyx feature set frozen at v0.21.1 for foreseeable future — next investment is adoption
+- Each rejection documented with specific downside, enabling future re-evaluation when conditions change
+- "N=10" and "2+ developers" serve as revisit triggers for deferred proposals (PM lowered B8 from N=10 to N=5)
+- DA insight stands: "Most valuable investment is 4th project adoption, not feature depth"
