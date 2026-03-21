@@ -157,7 +157,7 @@ if [ "$concept_count" -gt 0 ]; then
       file_count=$(find "$d" -maxdepth 1 -type f \
         \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" \
            -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \
-           -o -name "*.svelte" -o -name "*.vue" -o -name "*.jl" \) \
+           -o -name "*.svelte" -o -name "*.vue" \) \
         2>/dev/null | wc -l | tr -d ' ')
       if [ "$file_count" -gt 2 ]; then
         printf '%s\n' "$d"

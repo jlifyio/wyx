@@ -44,7 +44,7 @@ Find directories with 3+ source files lacking a colocated CONCEPT.md.
 **Use Glob only** — never use Bash/find/shell commands for file discovery.
 
 How to count source files per directory using Glob:
-1. Run Glob for `**/*.{ts,js,tsx,jsx,svelte,vue,py,rs,go,java,jl}` (scoped to path if given)
+1. Run Glob for `**/*.{ts,js,tsx,jsx,svelte,vue,py,rs,go,java}` (scoped to path if given)
 2. From the results, group files by their parent directory and count per directory
 3. Directories with 3+ source files and no colocated CONCEPT.md are candidates
 
@@ -55,9 +55,9 @@ Exclude directories matching: `tests/`, `test/`, `docs/`, `migrations/`, `node_m
 Before flagging a directory, evaluate for behavioral cohesion — directories containing
 only type definitions, stateless utility functions, thin store wrappers, or schema
 definitions rarely warrant concept specs (no state ownership + actions + operational principle).
-When evaluating cohesion, look for concrete signals: mutable state ownership (e.g. `$state`,
-`useState`, class fields), lifecycle methods (init/reset/destroy), persistence imports
-(database, localStorage, Storage), or event emission (emit/dispatch/publish). Directories
+When evaluating cohesion, look for concrete signals: mutable state ownership (e.g. class fields,
+instance variables, module-level state), lifecycle methods (init/reset/destroy), persistence
+logic (database, file I/O, caching), or event emission (emit/dispatch/publish). Directories
 with multiple signals are stronger concept candidates; directories with none are likely
 infrastructure — note the reason when skipping.
 

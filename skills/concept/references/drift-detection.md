@@ -9,7 +9,7 @@ When `$ARGUMENTS` starts with `drift`, scan for spec-code divergence.
 3. **Compare**: Check for divergence in each category (see below)
 4. **Report**: Produce a structured drift report
 
-**Multi-language projects**: When a concept has implementations in multiple languages (e.g., TypeScript frontend + Rust CLI), scope the drift check to include all relevant directories, or colocate a CONCEPT.md near each language's implementation. Drift detection is language-agnostic — Claude reads any language.
+**Multi-language projects**: When a concept has implementations in multiple languages, scope the drift check to include all relevant directories, or colocate a CONCEPT.md near each language's implementation. Drift detection is language-agnostic — Claude reads any language.
 
 ## Parallel scanning
 
@@ -67,7 +67,7 @@ When spawning Explore agents for parallel drift scanning, include this in each a
 
 ## Drift calibration
 
-- When the spec uses a simpler signature than the implementation's type wrapper (e.g., `void` vs `Promise<void>`, `Result` vs `anyhow::Result`), treat the discrepancy as Low unless it changes the error handling or calling contract.
+- When the spec uses a simpler signature than the implementation's language-specific type wrapper (e.g., async wrappers, result/error types), treat the discrepancy as Low unless it changes the error handling or calling contract.
 - State fields that are implementation details (private variables, internal caches, derived computed values) rather than part of the concept's public API contract should be flagged as Low severity.
 - Private helper methods or internal implementation functions (not exported, not called from outside the module) that appear as "Missing action" findings should be treated as Low severity — these are implementation details, not part of the concept's public API contract.
 - Naming convention differences between spec and code (camelCase vs snake_case, abbreviated vs full names) are Low severity — style issues, not contract violations. Exception: if the divergent name appears in cross-spec references (PIPELINE.md or SYNCS.md), flag as Medium since renaming requires coordinated updates.
