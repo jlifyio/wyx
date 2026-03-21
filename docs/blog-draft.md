@@ -30,9 +30,9 @@ When you create a `CONCEPT.md` next to your module:
 - Inventory: read + reserve via checkStock(), reserveStock(), releaseStock()
 ```
 
-...wyx's PreToolUse hook automatically fires every time Claude writes or edits a file near that spec. It extracts the boundary declarations and injects them into Claude's context. Claude reads them, self-checks, and respects the boundaries.
+...wyx's hooks automatically fire every time Claude writes or edits a file near that spec. Before the edit, the PreToolUse hook injects the full boundary declarations into Claude's context. After the edit, the PostToolUse hook reinjects the dependency list as a focused reminder — catching violations that slip through during multi-file sequences.
 
-No manual rules to remember. No hoping the LLM reads CLAUDE.md guidelines. The boundaries are right there in context, every time.
+No manual rules to remember. No hoping the LLM reads CLAUDE.md guidelines. The boundaries are right there in context, before and after every write.
 
 **Result (N=6 features, 2 projects): 33 cross-module imports checked, 0 violations.** Down from a 33% violation rate in our baseline.
 
@@ -60,9 +60,9 @@ This wasn't a theoretical improvement. This was a real bug in code I was activel
 
 ## How it works
 
-The mechanism is simple: wyx is a Claude Code plugin with a PreToolUse hook. Every time Claude writes or edits a file, the hook checks if there's a `CONCEPT.md` nearby. If so, it extracts the `## interactions` and `## dependencies` sections and injects them into Claude's context.
+The mechanism is simple: wyx is a Claude Code plugin with two edit-time hooks. Every time Claude writes or edits a file, the PreToolUse hook checks if there's a `CONCEPT.md` nearby. If so, it extracts the `## interactions` and `## dependencies` sections and injects them into Claude's context *before* the edit. After the edit, the PostToolUse hook reinjects just the dependency list — a focused "did you stay within bounds?" reminder.
 
-Claude sees these boundary declarations *before* it writes. It self-checks and — in my testing — consistently respects them.
+Claude sees the full boundary declarations before it writes, then gets a dependency check after. In my testing, it consistently respects them.
 
 Run `/wyx:concept src/payments/` on an existing module and wyx generates the spec from your code. From then on, boundary injection is automatic. No manual step, no CLAUDE.md rules to maintain.
 
@@ -124,7 +124,7 @@ The sample is small (N=6, p=0.21), but in practice: zero violations across 33 im
 You might be thinking: "Can't I just write better CLAUDE.md rules?" You can try. The difference:
 
 - **CLAUDE.md rules are static.** They sit in a file that Claude reads once at session start. By the time Claude writes code in a specific module, the relevant boundaries may be pages of context away.
-- **wyx specs are contextual.** They're injected into Claude's context at the point of every write — right when Claude needs them. Both rely on Claude choosing to comply, but wyx's delivery is timely and targeted.
+- **wyx specs are contextual.** They're injected into Claude's context before and after every write — right when Claude needs them. Both rely on Claude choosing to comply, but wyx's delivery is timely and targeted.
 - **Drift detection is active verification.** It checks code against specs, not just hoping they stay aligned.
 
 wyx adapts ideas from [WYSIWID](https://arxiv.org/abs/2508.14511) (Meng & Jackson, MIT) and [WYWIWID](https://ihack.us/2025/11/13/what-you-write-is-what-it-did-a-legible-pattern-for-structuring-software/) (Dr. Ernie) for practical use in LLM-assisted development.

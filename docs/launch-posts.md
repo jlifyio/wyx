@@ -15,7 +15,7 @@ Ready-to-post content for each platform. Copy, paste, submit.
 ```
 wyx is a Claude Code plugin that surfaces module boundaries to Claude on every write, reducing cross-module violations.
 
-The core mechanism: you write a CONCEPT.md spec next to your module describing its boundaries (interactions, dependencies). wyx's PreToolUse hook automatically injects these boundaries into Claude's context on every write. Claude sees them and self-checks — no manual rules needed.
+The core mechanism: you write a CONCEPT.md spec next to your module describing its boundaries (interactions, dependencies). wyx's hooks automatically inject these boundaries into Claude's context before and after every write. Claude sees them and self-checks — no manual rules needed.
 
 In testing (N=6 features, 2 projects): 33 cross-module imports checked, 0 violations (down from 33% baseline). Drift detection also caught a silent data loss bug — an SQL UPDATE missing 2 of 5 fields.
 
@@ -44,7 +44,7 @@ I tried CLAUDE.md rules ("don't import from scoring internals"). Claude followed
 So I built wyx — a Claude Code plugin that takes a different approach:
 
 1. You write a CONCEPT.md spec describing your module's boundaries
-2. wyx's PreToolUse hook injects those boundaries into Claude's context on every write
+2. wyx's hooks inject those boundaries into Claude's context before and after every write
 3. Claude self-checks against them automatically
 
 Result (N=6 features, 2 projects): 33 imports checked, 0 violations. And drift detection (`/wyx:concept drift`) caught a silent data loss bug — an SQL UPDATE that was missing 2 of 5 fields. My test suite completely missed it.
@@ -81,7 +81,7 @@ MIT licensed, feedback welcome. This is my first Claude Code plugin — would lo
 ```
 I built a Claude Code plugin called wyx that solves a specific problem: LLMs generate code that works but breaks module boundaries.
 
-The approach: you write a structured spec (CONCEPT.md) describing a module's interactions and dependencies. A PreToolUse hook automatically injects these boundary declarations into Claude's context on every file write. The LLM self-checks against them.
+The approach: you write a structured spec (CONCEPT.md) describing a module's interactions and dependencies. Hooks automatically inject these boundary declarations into Claude's context before and after every file write. The LLM self-checks against them.
 
 What made it interesting: drift detection — comparing specs against actual code — caught a silent data loss bug (SQL UPDATE missing 2/5 fields) that my test suite missed entirely.
 
@@ -114,7 +114,7 @@ Write a CONCEPT.md spec next to your module:
 - READS stock levels FROM Inventory (via service API only)
 - NEVER directly accesses Payments internals
 
-wyx injects these boundaries into Claude's context on EVERY write. Automatically.
+wyx injects these boundaries into Claude's context before and after EVERY write. Automatically.
 ```
 
 ```
