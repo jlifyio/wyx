@@ -139,6 +139,10 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **Stale spec risk**: Outdated or incorrect specs can be worse than no specs — the hook injects boundary declarations verbatim without validation, which may guide Claude away from correct approaches toward spec-declared-but-nonexistent APIs. Run `/wyx:concept drift` regularly to catch divergence.
 - **Claude-only testing**: All testing used Claude. Other LLMs may respond differently to CONCEPT.md specs.
 
+## Documentation
+
+- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-013). Check before making architectural changes.
+
 ## Design Decisions
 
 - **Hook type: command only** — prompt hooks lack spec access, agent hooks add 10-30s latency. Command hooks extract boundaries in ~2s.
