@@ -79,10 +79,21 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
   if [ -n "$last_ts" ]; then
     echo "Last drift check: $last_ts ($last_drift spec(s) with drift — rerun to update)"
     # Warn if specs modified since last drift check
-    newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
-      -newer "$drift_history" \
-      "${FIND_EXCLUDES[@]}" \
-      2>/dev/null | head -1)
+    # Compare against JSONL ts field (not file mtime) to avoid FP after drift fix sessions
+    _ts_ref=$(mktemp 2>/dev/null) || _ts_ref="/tmp/wyx-ts-ref-$$"
+    if touch -d "$last_ts" "$_ts_ref" 2>/dev/null; then
+      newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
+        -newer "$_ts_ref" \
+        "${FIND_EXCLUDES[@]}" \
+        2>/dev/null | head -1)
+    else
+      # Fallback: use JSONL file mtime (may have FP on non-GNU systems)
+      newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
+        -newer "$drift_history" \
+        "${FIND_EXCLUDES[@]}" \
+        2>/dev/null | head -1)
+    fi
+    rm -f "$_ts_ref" 2>/dev/null
     if [ -n "$newer_than_drift" ]; then
       echo "Specs modified since last drift check — consider running /wyx:concept drift"
     fi
