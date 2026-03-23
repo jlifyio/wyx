@@ -1,5 +1,7 @@
 #!/bin/bash
-set -euo pipefail
+set -eu
+# Avoid pipefail: internal pipes use head -N which closes early, causing
+# SIGPIPE for upstream commands (sort, sed). This is normal and not an error.
 # wyx SessionStart hook — report existing wyx artifact coverage
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
@@ -122,47 +124,45 @@ if [ -f "$PROJECT_DIR/ARCHITECTURE.md" ]; then
 fi
 
 # Suggest uncovered modules (directories with >2 source files but no CONCEPT.md, PIPELINE.md, or SYNCS.md)
+# Single-pass: find all source files, extract dirs, count per dir, filter — no nested find
 if [ "$concept_count" -gt 0 ]; then
-  uncovered=""
-  while IFS= read -r dir; do
-    [ -z "$dir" ] && continue
-    rel="${dir#"$PROJECT_DIR"/}"
-    # Skip well-known non-concept directories
-    case "$rel" in
-      tests/*|test/*|spec/*|__tests__/*|docs/*) continue ;;
-    esac
-    case "$rel" in
-      */migrations|*/migrations/*|migrations/*) continue ;;
-    esac
-    case "$rel" in
-      */components/ui|*/components/ui/*) continue ;;
-    esac
-    case "$rel" in
-      */types|types/*|*/e2e|e2e/*|*/cypress|cypress/*) continue ;;
-    esac
-    case "$rel" in
-      */fixtures|fixtures/*|*/stubs|stubs/*|*/mocks|mocks/*) continue ;;
-    esac
-    uncovered="${uncovered:+$uncovered, }$rel"
-  done < <(find "$PROJECT_DIR" -mindepth 1 -type d \
+  # Collect dirs with specs (for exclusion)
+  spec_dirs=""
+  for spec_file in $concepts $pipelines $syncs; do
+    [ -z "$spec_file" ] && continue
+    spec_dirs="$spec_dirs|$(dirname "$spec_file")"
+  done
+  spec_dirs="${spec_dirs#|}"  # strip leading |
+
+  uncovered=$(find "$PROJECT_DIR" -type f \
+    \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" \
+       -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \
+       -o -name "*.svelte" -o -name "*.vue" -o -name "*.jl" \) \
     "${FIND_EXCLUDES[@]}" \
     -not -path '*/target/*' -not -path '*/__pycache__/*' \
     -not -name '.*' -not -path '*/.*' \
-    2>/dev/null | while IFS= read -r d; do
-      # Skip directories that already have a boundary-contributing spec
-      if [ -f "$d/CONCEPT.md" ] || [ -f "$d/PIPELINE.md" ] || [ -f "$d/SYNCS.md" ]; then
-        continue
-      fi
-      # Count source files only (non-recursive)
-      file_count=$(find "$d" -maxdepth 1 -type f \
-        \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" \
-           -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \
-           -o -name "*.svelte" -o -name "*.vue" \) \
-        2>/dev/null | wc -l | tr -d ' ')
-      if [ "$file_count" -gt 2 ]; then
-        printf '%s\n' "$d"
-      fi
-    done | sort)
+    2>/dev/null \
+    | sed 's|/[^/]*$||' \
+    | sort | uniq -c | sort -rn \
+    | awk -v threshold=2 '$1 > threshold { print $2 }' \
+    | while IFS= read -r d; do
+        # Skip dirs that have a spec
+        if [ -n "$spec_dirs" ] && echo "$d" | grep -qE "^($spec_dirs)$"; then
+          continue
+        fi
+        rel="${d#"$PROJECT_DIR"/}"
+        # Skip well-known non-concept directories
+        case "$rel" in
+          tests/*|test/*|spec/*|__tests__/*|docs/*|build/*) continue ;;
+          */migrations|*/migrations/*|migrations/*) continue ;;
+          */components/ui|*/components/ui/*) continue ;;
+          */types|types/*|*/e2e|e2e/*|*/cypress|cypress/*) continue ;;
+          */fixtures|fixtures/*|*/stubs|stubs/*|*/mocks|mocks/*) continue ;;
+        esac
+        printf '%s\n' "$rel"
+      done \
+    | head -10 \
+    | tr '\n' ',' | sed 's/,$//')
   if [ -n "$uncovered" ]; then
     echo "Uncovered modules (>2 source files, no CONCEPT/PIPELINE/SYNCS): $uncovered"
   fi
@@ -183,6 +183,8 @@ if [ "$concept_count" -gt 0 ]; then
       check_dir=$(dirname "$spec_dir")
       while true; do
         case "$check_dir/" in "$PROJECT_DIR/"*) ;; *) break ;; esac
+        # Guard: dirname(".") returns "." — stop when we can't go higher
+        [ "$check_dir" = "$PROJECT_DIR" ] && break
         if [ -f "$check_dir/CONCEPT.md" ]; then
           rel_spec="${spec_file#"$PROJECT_DIR"/}"
           rel_concept="${check_dir#"$PROJECT_DIR"/}/CONCEPT.md"
