@@ -110,7 +110,7 @@ for s in audit concept map pipeline sync; do test -f skills/$s/SKILL.md && echo 
 
 ## Shell Script Conventions
 
-All three scripts use `set -euo pipefail`. Key patterns to preserve when editing:
+`drift-context.sh` and `post-check.sh` use `set -euo pipefail`. `session-start.sh` uses `set -eu` (no `pipefail` — internal pipes with `head -N` cause benign SIGPIPE). Key patterns to preserve when editing:
 
 **Trailing slash stripping**: `PROJECT_DIR="${CLAUDE_PROJECT_DIR%/}"` — double-slash breaks `case` pattern matching against `$PROJECT_DIR/`.
 
