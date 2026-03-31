@@ -35,7 +35,7 @@ Use this exact structure:
 # concept: [Name] [TypeParam]
 
 ## purpose
-[Single sentence: what this module does for its users]
+[Single sentence: what this module does and for whom]
 
 ## state
 - [field]: [TypeParam] -> [type]
@@ -76,7 +76,7 @@ Each entry: resource, access pattern, reason, and resolution status.]
 
 Apply these five rules when generating or reviewing a concept spec:
 
-1. **Single purpose**: Each concept serves exactly one user-facing purpose. If you find yourself writing "and" in the purpose, consider splitting.
+1. **Single purpose**: Each concept serves exactly one purpose. If you find yourself writing "and" in the purpose, consider splitting. For infrastructure concepts (Rule 5), the consumers are other concepts that depend on it.
 
 2. **Concept independence**: A concept must not depend on the internal state of another concept. Concepts interact only through their declared actions. If you see direct imports of another module's internal types or state, flag it as a boundary violation.
 
@@ -118,7 +118,7 @@ When designing from a feature description:
 
 1. Ask: "What is the single purpose?" — if multiple, split
 2. Define the minimal state needed
-3. Design actions as the complete interface (what can users DO with this concept?)
+3. Design actions as the complete interface (what can consumers DO with this concept?)
 4. Write operational principles that define correctness (these become test cases)
 5. Consider interactions: what other concepts does this one relate to?
 
