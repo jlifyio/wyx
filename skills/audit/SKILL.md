@@ -59,7 +59,7 @@ When evaluating cohesion, look for concrete signals: mutable state ownership (e.
 instance variables, module-level state), lifecycle methods (init/reset/destroy), persistence
 logic (database, file I/O, caching), or event emission (emit/dispatch/publish). Directories
 with multiple signals are stronger concept candidates; directories with none are likely
-infrastructure — note the reason when skipping.
+support code — note the reason when skipping.
 
 ## Step 3: Detect Pipeline Candidates
 
