@@ -76,16 +76,22 @@ echo "$report"
 drift_history="$PROJECT_DIR/.claude/wyx-drift-history.jsonl"
 if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
   last_entry=$(grep -v '^[[:space:]]*$' "$drift_history" | tail -1 || true)
-  last_ts=$(echo "$last_entry" | jq -r '.ts // empty' 2>/dev/null)
+  # Every jq call below uses `|| var=fallback` because set -eu (no pipefail)
+  # still aborts on command-substitution failure. A malformed JSONL entry
+  # (partial write, manual corruption) would otherwise kill the SessionStart
+  # hook silently after printing the artifacts line, hiding all downstream
+  # warnings. Treating parse failure as "empty entry" lets the hook degrade
+  # gracefully — suggest_drift stays true later, which is the safer default.
+  last_ts=$(echo "$last_entry" | jq -r '.ts // empty' 2>/dev/null) || last_ts=""
   # action defaults to "detect" for backward compat with pre-v0.23 entries
-  last_action=$(echo "$last_entry" | jq -r '.action // "detect"' 2>/dev/null)
+  last_action=$(echo "$last_entry" | jq -r '.action // "detect"' 2>/dev/null) || last_action="detect"
   if [ "$last_action" = "fix" ]; then
     # Fix entry: report remaining drift and the originating detect's timestamp
-    last_drift=$(echo "$last_entry" | jq -r '.specs_remaining // 0' 2>/dev/null)
-    ref_ts=$(echo "$last_entry" | jq -r '.ref_ts // empty' 2>/dev/null)
+    last_drift=$(echo "$last_entry" | jq -r '.specs_remaining // 0' 2>/dev/null) || last_drift="0"
+    ref_ts=$(echo "$last_entry" | jq -r '.ref_ts // empty' 2>/dev/null) || ref_ts=""
     detect_ts="${ref_ts:-$last_ts}"
   else
-    last_drift=$(echo "$last_entry" | jq -r '.specs_with_drift // 0' 2>/dev/null)
+    last_drift=$(echo "$last_entry" | jq -r '.specs_with_drift // 0' 2>/dev/null) || last_drift="0"
     detect_ts="$last_ts"
   fi
   if [ -n "$last_ts" ]; then
@@ -223,17 +229,17 @@ fi
 
 # Contextual next-step suggestion based on project state
 if [ "$concept_count" -gt 0 ]; then
-  # Check if drift was checked recently (within last 7 days)
+  # Check if drift was checked today. Reuse last_ts from the earlier drift
+  # reporting block (set at line 79) rather than re-parsing the JSONL — if
+  # that parse failed (malformed entry), last_ts is empty here and
+  # suggest_drift stays true, which is the safer default. Bash variable
+  # scope is function-level, so last_ts is visible across the if-blocks.
   suggest_drift=true
-  if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
-    last_ts=$(grep -v '^[[:space:]]*$' "$drift_history" | tail -1 | jq -r '.ts // empty' 2>/dev/null)
-    if [ -n "$last_ts" ]; then
-      # Compare dates (YYYY-MM-DD prefix)
-      last_date="${last_ts:0:10}"
-      today=$(date -u +%Y-%m-%d 2>/dev/null || true)
-      if [ "$last_date" = "$today" ]; then
-        suggest_drift=false
-      fi
+  if [ -n "${last_ts:-}" ]; then
+    last_date="${last_ts:0:10}"
+    today=$(date -u +%Y-%m-%d 2>/dev/null || true)
+    if [ "$last_date" = "$today" ]; then
+      suggest_drift=false
     fi
   fi
   if [ "$suggest_drift" = true ]; then
