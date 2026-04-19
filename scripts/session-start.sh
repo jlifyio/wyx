@@ -77,34 +77,55 @@ drift_history="$PROJECT_DIR/.claude/wyx-drift-history.jsonl"
 if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
   last_entry=$(grep -v '^[[:space:]]*$' "$drift_history" | tail -1 || true)
   last_ts=$(echo "$last_entry" | jq -r '.ts // empty' 2>/dev/null)
-  last_drift=$(echo "$last_entry" | jq -r '.specs_with_drift // 0' 2>/dev/null)
+  # action defaults to "detect" for backward compat with pre-v0.23 entries
+  last_action=$(echo "$last_entry" | jq -r '.action // "detect"' 2>/dev/null)
+  if [ "$last_action" = "fix" ]; then
+    # Fix entry: report remaining drift and the originating detect's timestamp
+    last_drift=$(echo "$last_entry" | jq -r '.specs_remaining // 0' 2>/dev/null)
+    ref_ts=$(echo "$last_entry" | jq -r '.ref_ts // empty' 2>/dev/null)
+    detect_ts="${ref_ts:-$last_ts}"
+  else
+    last_drift=$(echo "$last_entry" | jq -r '.specs_with_drift // 0' 2>/dev/null)
+    detect_ts="$last_ts"
+  fi
   if [ -n "$last_ts" ]; then
-    echo "Last drift check: $last_ts ($last_drift spec(s) with drift — rerun to update)"
-    # Warn if specs modified since last drift check
-    # Compare against JSONL ts field (not file mtime) to avoid FP after drift fix sessions
-    _ts_ref=$(mktemp 2>/dev/null) || _ts_ref="/tmp/wyx-ts-ref-$$"
-    if touch -d "$last_ts" "$_ts_ref" 2>/dev/null; then
-      newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
-        -newer "$_ts_ref" \
-        "${FIND_EXCLUDES[@]}" \
-        2>/dev/null | head -1)
+    if [ "$last_action" = "fix" ]; then
+      if [ "$last_drift" = "0" ]; then
+        echo "Last drift check: $detect_ts (all fixed at $last_ts)"
+      else
+        echo "Last drift check: $detect_ts ($last_drift spec(s) pending after fix at $last_ts)"
+      fi
     else
-      # Fallback: use JSONL file mtime (may have FP on non-GNU systems)
-      newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
-        -newer "$drift_history" \
-        "${FIND_EXCLUDES[@]}" \
-        2>/dev/null | head -1)
+      echo "Last drift check: $last_ts ($last_drift spec(s) with drift — rerun to update)"
     fi
-    rm -f "$_ts_ref" 2>/dev/null
+    # Build a single reference file representing the last drift *measurement*.
+    # Always use the detect ts (not fix ts): a fix entry is a mid-workflow
+    # marker, not a new measurement. Any spec or code change since the last
+    # detect warrants a new scan, even if a fix happened in between. The JSONL
+    # file mtime would track the fix append time, so we derive the reference
+    # from the detect ts instead. Fall back to JSONL file mtime only when
+    # touch -d is unavailable (non-GNU coreutils).
+    _ts_ref=$(mktemp 2>/dev/null) || _ts_ref="/tmp/wyx-ts-ref-$$"
+    if touch -d "$detect_ts" "$_ts_ref" 2>/dev/null; then
+      ref_file="$_ts_ref"
+    else
+      ref_file="$drift_history"
+    fi
+    # Warn if specs modified since last drift check
+    newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
+      -newer "$ref_file" \
+      "${FIND_EXCLUDES[@]}" \
+      2>/dev/null | head -1)
     if [ -n "$newer_than_drift" ]; then
       echo "Specs modified since last drift check — consider running /wyx:concept drift"
     fi
     # Report code directories modified since last drift check
     changed_dirs=$(find "$PROJECT_DIR" -type f \
       \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" -o -name "*.svelte" -o -name "*.vue" \) \
-      -newer "$drift_history" \
+      -newer "$ref_file" \
       "${FIND_EXCLUDES[@]}" \
       2>/dev/null | xargs -r dirname 2>/dev/null | sort -u | sed "s|^$PROJECT_DIR/||" | head -5)
+    rm -f "$_ts_ref" 2>/dev/null
     if [ -n "$changed_dirs" ]; then
       changed_list=$(echo "$changed_dirs" | tr '\n' ',' | sed 's/,$//')
       echo "Code modified since last drift: $changed_list"
