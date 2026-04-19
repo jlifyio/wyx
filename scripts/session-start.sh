@@ -229,14 +229,16 @@ fi
 
 # Contextual next-step suggestion based on project state
 if [ "$concept_count" -gt 0 ]; then
-  # Check if drift was checked today. Reuse last_ts from the earlier drift
-  # reporting block (set at line 79) rather than re-parsing the JSONL — if
-  # that parse failed (malformed entry), last_ts is empty here and
-  # suggest_drift stays true, which is the safer default. Bash variable
-  # scope is function-level, so last_ts is visible across the if-blocks.
+  # Check if drift was *measured* today. Compare against detect_ts (not
+  # last_ts) — a fix entry is a mid-workflow marker, not a new measurement,
+  # so fix ts is not a valid "last measurement" anchor. This matches the
+  # find-newer block above (line 101-113) which uses the same invariant.
+  # If the earlier parse failed (malformed entry) or detect_ts is unset,
+  # suggest_drift stays true, the safer default. Bash variable scope is
+  # function-level, so detect_ts is visible across the if-blocks.
   suggest_drift=true
-  if [ -n "${last_ts:-}" ]; then
-    last_date="${last_ts:0:10}"
+  if [ -n "${detect_ts:-}" ]; then
+    last_date="${detect_ts:0:10}"
     today=$(date -u +%Y-%m-%d 2>/dev/null || true)
     if [ "$last_date" = "$today" ]; then
       suggest_drift=false
