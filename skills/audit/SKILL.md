@@ -40,13 +40,13 @@ should have `## data boundary`. Note any spec missing all its expected boundary 
 
 ## Step 2: Identify Uncovered Modules
 
-Find directories with 3+ source files lacking a colocated CONCEPT.md.
+Find directories with more than 2 source files lacking any colocated spec (CONCEPT.md, PIPELINE.md, or SYNCS.md). This matches the SessionStart hook's exclusion set — any of the three spec types protects a directory from being flagged.
 **Use Glob only** — never use Bash/find/shell commands for file discovery.
 
 How to count source files per directory using Glob:
 1. Run Glob for `**/*.{ts,js,tsx,jsx,svelte,vue,py,rs,go,java}` (scoped to path if given)
 2. From the results, group files by their parent directory and count per directory
-3. Directories with 3+ source files and no colocated CONCEPT.md are candidates
+3. Directories with more than 2 source files and no colocated spec are candidates
 
 Exclude directories matching: `tests/`, `test/`, `docs/`, `migrations/`, `node_modules/`,
 `.git/`, `dist/`, `build/`, `components/ui/`, `__pycache__/`, `.svelte-kit/`, `target/`,
