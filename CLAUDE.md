@@ -49,7 +49,7 @@ skills/
 
 **PreToolUse** (command, matcher: `Write|Edit|NotebookEdit`): When writing near a spec file, outputs boundary declarations via `hookSpecificOutput.additionalContext`. Extracts `## purpose` from all co-located specs (CONCEPT/PIPELINE/SYNCS) for the spec listing, plus boundary declarations: `## interactions` and `## dependencies` from CONCEPT.md, and `## data boundary` from PIPELINE.md. SYNCS.md is listed in spec context but does not stop traversal or inject boundaries. Resolves relative file paths to absolute. Handles both `file_path` (Write/Edit) and `notebook_path` (NotebookEdit) via jq fallback chain. Skips inert files (`.json`, `.jsonl`, `.lock`, `.log`, `.txt`) — no context injection for non-code files. Handles CRLF line endings via `tr -d '\r'` in extract_section. When no CONCEPT.md is co-located with the stopping spec (e.g., PIPELINE.md-only directory), looks for an ancestor CONCEPT.md and injects its boundaries with a `[SHADOWED]` caveat. Enables LLM self-checking against declared boundaries. **This is the core differentiator of wyx** — concept specs are the fuel, this hook is the engine.
 
-**PostToolUse** (command, matcher: `Write|Edit|NotebookEdit`): After a file edit near a CONCEPT.md, reinjects the `## dependencies` list as a focused reminder. Complements PreToolUse: PreToolUse provides full boundary context before the edit (guidance), PostToolUse provides the dependency list after (verification prompt). Walks upward to find the nearest CONCEPT.md only (not PIPELINE.md or SYNCS.md — they lack dependency lists). Silent when: no spec found, no `## dependencies` section, editing inert files, or editing spec files themselves. ~90 lines, language-agnostic, no import parsing. Design principle: **hooks extract and inject; the LLM judges**.
+**PostToolUse** (command, matcher: `Write|Edit|NotebookEdit`): After a file edit near a CONCEPT.md, reinjects the `## dependencies` list as a focused reminder. Complements PreToolUse: PreToolUse provides full boundary context before the edit (guidance), PostToolUse provides the dependency list after (verification prompt). Walks upward to find the nearest CONCEPT.md only (not PIPELINE.md or SYNCS.md — they lack dependency lists). Silent when: no spec found, no `## dependencies` section, editing inert files, or editing spec files themselves. ~100 lines, language-agnostic, no import parsing. Design principle: **hooks extract and inject; the LLM judges**.
 
 ### Key Constraints
 
@@ -129,6 +129,8 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 **PreToolUse/PostToolUse output format**: Must use `hookSpecificOutput.additionalContext` (structured JSON via `jq -n`). Plain text stdout is only shown in verbose mode per official docs.
 
 **JSONL reading**: Use `grep -v '^[[:space:]]*$' file | tail -1` instead of `tail -1` — Claude's Write tool may append trailing empty lines.
+
+**`set -eu` + command substitution**: `var=$(cmd | jq ...)` aborts the script when jq exits non-zero, even without `pipefail`. Use `var=$(...) || var="fallback"` on every jq command-sub (see `drift-context.sh:15`, `session-start.sh:79-90`). A single unguarded line can silently kill a hook after partial output.
 
 ## Known Limitations
 
