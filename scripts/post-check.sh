@@ -9,6 +9,9 @@
 set -euo pipefail
 
 input=$(cat)
+# jq is required — if missing, file_path stays empty and we exit below.
+# This is intentional: SessionStart hook warns about missing jq (fires once
+# per session). NotebookEdit uses notebook_path instead of file_path — try both.
 file_path=$(echo "$input" | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' 2>/dev/null) || file_path=""
 
 if [ -z "$file_path" ]; then
@@ -34,6 +37,13 @@ else
     PROJECT_DIR="$(pwd)"
   fi
   PROJECT_DIR="${PROJECT_DIR%/}"
+fi
+
+# Guard against PROJECT_DIR="" or "/" — would cause upward traversal to
+# scan ancestors of the edited file up to filesystem root (matches
+# drift-context.sh).
+if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "/" ]; then
+  exit 0
 fi
 
 # Resolve relative file paths to absolute

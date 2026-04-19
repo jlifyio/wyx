@@ -35,6 +35,15 @@ else
   PROJECT_DIR="${PROJECT_DIR%/}"
 fi
 
+# Guard against PROJECT_DIR="" (CLAUDE_PROJECT_DIR="/" strips to empty) or
+# PROJECT_DIR="/" (literal root). Either makes the upward-traversal stop
+# condition match every absolute path, so the hook would scan ancestors of
+# the edited file up to filesystem root. Silent exit is safer than leaking
+# unrelated CONCEPT.md content into context.
+if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "/" ]; then
+  exit 0
+fi
+
 # Resolve relative file paths to absolute using PROJECT_DIR
 case "$file_path" in
   /*) ;; # already absolute
