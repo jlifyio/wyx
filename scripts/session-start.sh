@@ -107,34 +107,35 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
     # Build a single reference file representing the last drift *measurement*.
     # Always use the detect ts (not fix ts): a fix entry is a mid-workflow
     # marker, not a new measurement. Any spec or code change since the last
-    # detect warrants a new scan, even if a fix happened in between. The JSONL
-    # file mtime would track the fix append time, so we derive the reference
-    # from the detect ts instead. Fall back to JSONL file mtime only when
-    # touch -d is unavailable (non-GNU coreutils).
-    _ts_ref=$(mktemp 2>/dev/null) || _ts_ref="/tmp/wyx-ts-ref-$$"
-    if touch -d "$detect_ts" "$_ts_ref" 2>/dev/null; then
-      ref_file="$_ts_ref"
-    else
-      ref_file="$drift_history"
-    fi
-    # Warn if specs modified since last drift check
-    newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
-      -newer "$ref_file" \
-      "${FIND_EXCLUDES[@]}" \
-      2>/dev/null | head -1)
-    if [ -n "$newer_than_drift" ]; then
-      echo "Specs modified since last drift check — consider running /wyx:concept drift"
-    fi
-    # Report code directories modified since last drift check
-    changed_dirs=$(find "$PROJECT_DIR" -type f \
-      \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" -o -name "*.svelte" -o -name "*.vue" \) \
-      -newer "$ref_file" \
-      "${FIND_EXCLUDES[@]}" \
-      2>/dev/null | xargs -r dirname 2>/dev/null | sort -u | sed "s|^$PROJECT_DIR/||" | head -5)
-    rm -f "$_ts_ref" 2>/dev/null
-    if [ -n "$changed_dirs" ]; then
-      changed_list=$(echo "$changed_dirs" | tr '\n' ',' | sed 's/,$//')
-      echo "Code modified since last drift: $changed_list"
+    # detect warrants a new scan, even if a fix happened in between.
+    # If `touch -d` is unavailable (non-GNU coreutils, missing mktemp, etc.),
+    # SKIP the find-newer block entirely. Falling back to $drift_history's
+    # mtime would re-introduce the v0.21.0 false-positive bug — JSONL file
+    # mtime tracks the most recent append (often a fix entry), not the
+    # detect ts that anchors the measurement.
+    _ts_ref=$(mktemp 2>/dev/null) || _ts_ref=""
+    if [ -n "$_ts_ref" ] && touch -d "$detect_ts" "$_ts_ref" 2>/dev/null; then
+      # Warn if specs modified since last drift check
+      newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
+        -newer "$_ts_ref" \
+        "${FIND_EXCLUDES[@]}" \
+        2>/dev/null | head -1)
+      if [ -n "$newer_than_drift" ]; then
+        echo "Specs modified since last drift check — consider running /wyx:concept drift"
+      fi
+      # Report code directories modified since last drift check
+      changed_dirs=$(find "$PROJECT_DIR" -type f \
+        \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" -o -name "*.svelte" -o -name "*.vue" \) \
+        -newer "$_ts_ref" \
+        "${FIND_EXCLUDES[@]}" \
+        2>/dev/null | xargs -r dirname 2>/dev/null | sort -u | sed "s|^$PROJECT_DIR/||" | head -5)
+      rm -f "$_ts_ref" 2>/dev/null
+      if [ -n "$changed_dirs" ]; then
+        changed_list=$(echo "$changed_dirs" | tr '\n' ',' | sed 's/,$//')
+        echo "Code modified since last drift: $changed_list"
+      fi
+    elif [ -n "$_ts_ref" ]; then
+      rm -f "$_ts_ref" 2>/dev/null
     fi
   fi
 fi
@@ -153,12 +154,14 @@ fi
 # Suggest uncovered modules (directories with >2 source files but no CONCEPT.md, PIPELINE.md, or SYNCS.md)
 # Single-pass: find all source files, extract dirs, count per dir, filter — no nested find
 if [ "$concept_count" -gt 0 ]; then
-  # Collect dirs with specs (for exclusion)
+  # Collect dirs with specs (for exclusion). Newline-fed read avoids word-splitting
+  # on spec paths containing whitespace — `$concepts $pipelines $syncs` unquoted
+  # would corrupt entries like `My Project/src/auth/CONCEPT.md`.
   spec_dirs=""
-  for spec_file in $concepts $pipelines $syncs; do
+  while IFS= read -r spec_file; do
     [ -z "$spec_file" ] && continue
     spec_dirs="$spec_dirs|$(dirname "$spec_file")"
-  done
+  done <<< "$(printf '%s\n%s\n%s' "$concepts" "$pipelines" "$syncs")"
   spec_dirs="${spec_dirs#|}"  # strip leading |
 
   uncovered=$(find "$PROJECT_DIR" -type f \
@@ -197,31 +200,32 @@ fi
 
 # Detect spec shadowing: PIPELINE.md without co-located CONCEPT.md stops hook traversal,
 # hiding ancestor boundary checking. SYNCS.md does not stop traversal so cannot cause shadowing.
-if [ "$concept_count" -gt 0 ]; then
+# (The outer `for spec_list in "$pipelines"` loop was removed in v0.23.2 — vestigial
+# from when SYNCS.md was iterated too, removed per v0.17.1 traversal fix.)
+if [ "$concept_count" -gt 0 ] && [ -n "$pipelines" ]; then
   shadows=""
-  for spec_list in "$pipelines"; do
-    [ -z "$spec_list" ] && continue
-    while IFS= read -r spec_file; do
-      [ -z "$spec_file" ] && continue
-      spec_dir=$(dirname "$spec_file")
-      # Safe if this directory already has CONCEPT.md
-      [ -f "$spec_dir/CONCEPT.md" ] && continue
-      # Walk up to check for ancestor CONCEPT.md
-      check_dir=$(dirname "$spec_dir")
-      while true; do
-        case "$check_dir/" in "$PROJECT_DIR/"*) ;; *) break ;; esac
-        # Guard: dirname(".") returns "." — stop when we can't go higher
-        [ "$check_dir" = "$PROJECT_DIR" ] && break
-        if [ -f "$check_dir/CONCEPT.md" ]; then
-          rel_spec="${spec_file#"$PROJECT_DIR"/}"
-          rel_concept="${check_dir#"$PROJECT_DIR"/}/CONCEPT.md"
-          shadows="${shadows:+$shadows; }$rel_spec hides $rel_concept"
-          break
-        fi
-        check_dir=$(dirname "$check_dir")
-      done
-    done <<< "$spec_list"
-  done
+  while IFS= read -r spec_file; do
+    [ -z "$spec_file" ] && continue
+    spec_dir=$(dirname "$spec_file")
+    # Safe if this directory already has CONCEPT.md
+    [ -f "$spec_dir/CONCEPT.md" ] && continue
+    # Walk up to check for ancestor CONCEPT.md
+    check_dir=$(dirname "$spec_dir")
+    prev_check=""
+    while [ "$check_dir" != "$prev_check" ]; do
+      case "$check_dir/" in "$PROJECT_DIR/"*) ;; *) break ;; esac
+      # Guard: dirname(".") returns "." — stop when we can't go higher
+      [ "$check_dir" = "$PROJECT_DIR" ] && break
+      if [ -f "$check_dir/CONCEPT.md" ]; then
+        rel_spec="${spec_file#"$PROJECT_DIR"/}"
+        rel_concept="${check_dir#"$PROJECT_DIR"/}/CONCEPT.md"
+        shadows="${shadows:+$shadows; }$rel_spec hides $rel_concept"
+        break
+      fi
+      prev_check="$check_dir"
+      check_dir=$(dirname "$check_dir")
+    done
+  done <<< "$pipelines"
   if [ -n "$shadows" ]; then
     echo "Warning: Spec shadowing detected — $shadows. Files in these directories won't get boundary checking from the ancestor CONCEPT.md. Fix: add a CONCEPT.md to the shadowing directory, or move the spec."
   fi
@@ -232,7 +236,7 @@ if [ "$concept_count" -gt 0 ]; then
   # Check if drift was *measured* today. Compare against detect_ts (not
   # last_ts) — a fix entry is a mid-workflow marker, not a new measurement,
   # so fix ts is not a valid "last measurement" anchor. This matches the
-  # find-newer block above (line 101-113) which uses the same invariant.
+  # `_ts_ref`/`detect_ts` block above which uses the same invariant.
   # If the earlier parse failed (malformed entry) or detect_ts is unset,
   # suggest_drift stays true, the safer default. Bash variable scope is
   # function-level, so detect_ts is visible across the if-blocks.
