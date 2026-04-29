@@ -132,13 +132,13 @@ When designing from a feature description:
 
 ## Spec Placement and Hook Behavior
 
-The drift context hook walks **upward** from the edited file's directory and stops at the **first directory containing any wyx spec** (CONCEPT.md, PIPELINE.md, or SYNCS.md). Only CONCEPT.md boundary sections (`## interactions` and `## dependencies`) are extracted for boundary checking.
+The drift context hook walks **upward** from the edited file's directory and stops at the **first directory containing CONCEPT.md or PIPELINE.md** (boundary-contributing specs). SYNCS.md is recognized for spec listing but does **not** stop traversal — a SYNCS.md-only directory lets the walk continue to find an ancestor CONCEPT.md/PIPELINE.md. Boundary sections extracted: CONCEPT.md `## interactions` and `## dependencies`, PIPELINE.md `## data boundary`.
 
 **Co-locate specs**: Place CONCEPT.md and PIPELINE.md in the same directory when the pipeline belongs to that concept. The hook finds both and extracts CONCEPT.md boundaries correctly.
 
 **Anti-patterns to avoid**:
 - **Root-level CONCEPT.md**: A CONCEPT.md at `src/` becomes the fallback boundary for all files in subdirectories that lack their own closer spec — applying overly broad boundaries to uncovered modules.
-- **Spec in a subdirectory**: A PIPELINE.md at `scoring/transforms/PIPELINE.md` causes the hook to stop there, silently hiding `scoring/CONCEPT.md` boundary declarations for files in `transforms/`.
+- **Spec in a subdirectory**: A PIPELINE.md at `scoring/transforms/PIPELINE.md` causes the hook to stop there for boundary lookups. The hook then walks up to `scoring/CONCEPT.md` and injects its boundaries with a `[SHADOWED]` caveat — works, but the caveat indicates suboptimal placement (the LLM is told the boundaries may not fully apply to `transforms/`).
 - **Spec far from code**: A CONCEPT.md placed far from implementation won't trigger when nearby files are edited.
 
 ## Drift Detection Mode

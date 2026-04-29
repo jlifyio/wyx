@@ -6,7 +6,7 @@ description: >
   dependencies", "wyx map", "wyx", or wants a Mermaid graph with dependency
   matrix and data flow paths derived from all wyx specs.
 argument-hint: "e.g. src/lib/ to map a subtree, or leave empty for full project"
-allowed-tools: Read, Glob, Grep, Write, Agent
+allowed-tools: Read, Glob, Grep, Write, Agent, Bash
 ---
 
 # Architecture Map Generation

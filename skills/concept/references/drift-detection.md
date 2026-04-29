@@ -13,7 +13,7 @@ When `$ARGUMENTS` starts with `drift`, scan for spec-code divergence.
 
 ## Parallel scanning
 
-When 3+ specs are found, use `Agent` with `subagent_type: "Explore"` to scan specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable) — safe for drift analysis.
+When 5+ specs are found, use `Agent` with `subagent_type: "Explore"` to scan specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable) — safe for drift analysis. (The threshold is lower than `/wyx:map`'s 10+ because drift agents read both spec AND implementation per task; the heavier per-task work amortizes agent-spawn overhead at lower N.)
 
 - Spawn one Explore agent per spec (or group of 2-3 nearby specs)
 - Each agent reads the spec + implementation code and returns findings in the drift report format (category, severity, file:line, description)
@@ -71,7 +71,7 @@ When spawning Explore agents for parallel drift scanning, include this in each a
 - When the spec uses a simpler signature than the implementation's language-specific type wrapper (e.g., async wrappers, result/error types), treat the discrepancy as Low unless it changes the error handling or calling contract.
 - State fields that are implementation details (private variables, internal caches, derived computed values) rather than part of the concept's public API contract should be flagged as Low severity.
 - Private helper methods or internal implementation functions (not exported, not called from outside the module) that appear as "Missing action" findings should be treated as Low severity — these are implementation details, not part of the concept's public API contract.
-- Naming convention differences between spec and code (camelCase vs snake_case, abbreviated vs full names) are Low severity — style issues, not contract violations. Exception: if the divergent name appears in cross-spec references (PIPELINE.md or SYNCS.md), flag as Medium since renaming requires coordinated updates.
+- Naming convention differences between spec and code (camelCase vs snake_case, abbreviated vs full names) are Low severity — style issues, not contract violations. Exception: if the divergent name appears in cross-spec references (PIPELINE.md or SYNCS.md), this is **not** a within-category escalation but a **reclassification** into a cross-spec validation category (`PIPELINE→CONCEPT name mismatch` or `SYNCS→CONCEPT missing reference`, both High in the cross-spec table below).
 - When the same Low finding repeats across multiple actions in one spec (e.g., same undocumented parameter in 3+ actions), count as a single Low with a note listing affected actions. Deduplicated Lows count as 1 in the `low_by_spec` JSONL field.
 - Before reporting a finding as Medium or higher, verify it exists in the current code with grep or file read. Do not report drift based on memory or assumptions from prior file reads.
 - If a single spec accumulates more than 5 Low findings (after deduplication), note this in the drift report summary and suggest re-evaluating whether the spec's `## actions` or `## state` adequately describes the module's current public surface.
