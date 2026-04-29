@@ -8,7 +8,13 @@
 
 set -euo pipefail
 
-input=$(cat)
+# Guard against stdin failure (closed pipe, exotic exec env). Empty input is
+# treated as no-op — the hook produces no additionalContext rather than dying
+# silently under set -euo pipefail.
+input=$(cat) || input=""
+if [ -z "$input" ]; then
+  exit 0
+fi
 # jq is required — if missing, file_path stays empty and we exit below.
 # This is intentional: SessionStart hook warns about missing jq (fires once per session).
 # NotebookEdit uses notebook_path instead of file_path — try both.
@@ -50,11 +56,29 @@ case "$file_path" in
   *) file_path="$PROJECT_DIR/$file_path" ;;
 esac
 
-# Extract a section's content from a wyx spec file (between ## heading and next ##)
+# Extract a section's content from a wyx spec file (between ## heading and next ##).
+# Trailing `|| true` intentionally swallows sed errors — empty result == "section
+# absent" by contract. Do not report sed failures separately; downstream code
+# treats empty as "no boundary declarations found".
 extract_section() {
   local file="$1" section="$2"
   tr -d '\r' < "$file" | sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{/^## ${section}[[:space:]]*$/d;/^## [^#]/d;p;}" 2>/dev/null \
     | sed '/^$/d' || true
+}
+
+# Case-insensitive section extraction: try lowercase first, then capitalized
+# (older specs use `## Purpose`, newer specs use `## purpose`). Capitalizes
+# only the first letter — matches both "purpose"→"Purpose" and
+# "data boundary"→"Data boundary" (NOT "Data Boundary"; that pattern was
+# already absent before this helper).
+extract_section_ci() {
+  local file="$1" section="$2"
+  local result=""
+  result=$(extract_section "$file" "$section") || result=""
+  if [ -z "$result" ]; then
+    result=$(extract_section "$file" "${section^}") || result=""
+  fi
+  printf '%s' "$result"
 }
 
 # Search upward from file's directory for wyx spec files
@@ -63,8 +87,17 @@ found_specs=""
 found_concept=false
 spec_context=""
 boundary_context=""
+# Initialize boundary-section vars so I1 message branching below can probe
+# them under set -u even when no CONCEPT.md / PIPELINE.md was matched.
+dependencies=""
+anc_dependencies=""
 
-while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
+# Defense-in-depth: prev_dir guards against an exotic FS or in-place edit
+# making `dirname` return the same value twice. Natural termination still
+# happens via `/`, `.`, or PROJECT_DIR boundary; this is a belt-and-braces
+# stop so the 5s hook timeout never has to kick in.
+prev_dir=""
+while [ "$dir" != "/" ] && [ "$dir" != "." ] && [ "$dir" != "$prev_dir" ]; do
   # Stop searching above the project root (trailing slash prevents sibling match)
   case "$dir/" in
     "$PROJECT_DIR/"*) ;;
@@ -78,11 +111,8 @@ while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
       relative_spec="${spec#"$PROJECT_DIR"/}"
       found_specs="${found_specs:+$found_specs, }${relative_spec}"
 
-      # Extract purpose (lowercase priority; falls back to capitalized for older specs)
-      purpose=$(extract_section "$spec" "purpose")
-      if [ -z "$purpose" ]; then
-        purpose=$(extract_section "$spec" "Purpose")
-      fi
+      # Extract purpose (case-insensitive: lowercase priority, capitalized fallback)
+      purpose=$(extract_section_ci "$spec" "purpose")
       if [ -n "$purpose" ]; then
         spec_context="${spec_context}  - ${relative_spec}: ${purpose}
 "
@@ -95,20 +125,13 @@ while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
       case "$spec" in
         *CONCEPT*)
           found_concept=true
-          interactions=$(extract_section "$spec" "interactions")
-          if [ -z "$interactions" ]; then
-            interactions=$(extract_section "$spec" "Interactions")
-          fi
+          interactions=$(extract_section_ci "$spec" "interactions")
           if [ -n "$interactions" ]; then
             boundary_context="${boundary_context}  [${relative_spec} ## interactions]
 ${interactions}
 "
           fi
-          # Extract dependencies (lowercase priority; falls back to capitalized for older specs)
-          dependencies=$(extract_section "$spec" "dependencies")
-          if [ -z "$dependencies" ]; then
-            dependencies=$(extract_section "$spec" "Dependencies")
-          fi
+          dependencies=$(extract_section_ci "$spec" "dependencies")
           if [ -n "$dependencies" ]; then
             boundary_context="${boundary_context}  [${relative_spec} ## dependencies]
 ${dependencies}
@@ -121,10 +144,7 @@ ${dependencies}
           ;;
         *PIPELINE*)
           # Extract data boundary (access constraints, not quality invariants)
-          data_boundary=$(extract_section "$spec" "data boundary")
-          if [ -z "$data_boundary" ]; then
-            data_boundary=$(extract_section "$spec" "Data boundary")
-          fi
+          data_boundary=$(extract_section_ci "$spec" "data boundary")
           if [ -n "$data_boundary" ]; then
             boundary_context="${boundary_context}  [${relative_spec} ## data boundary]
 ${data_boundary}
@@ -140,6 +160,7 @@ ${data_boundary}
   if [ -f "$dir/CONCEPT.md" ] || [ -f "$dir/PIPELINE.md" ]; then
     break
   fi
+  prev_dir="$dir"
   dir=$(dirname "$dir")
 done
 
@@ -147,22 +168,20 @@ done
 # ancestor CONCEPT.md and inject its boundaries with a caveat note.
 # This covers: PIPELINE.md-only directories (data boundary present but no interactions).
 if [ -n "$found_specs" ] && [ "$found_concept" = false ]; then
+  # ancestor_dir starts from dirname(dir) — `dir` is the directory at which the
+  # main loop broke. Skipping it avoids re-examining the same directory and
+  # short-circuiting on a co-located non-CONCEPT spec's parent.
   ancestor_dir=$(dirname "$dir")
-  while [ "$ancestor_dir" != "/" ] && [ "$ancestor_dir" != "." ]; do
+  prev_ancestor=""
+  while [ "$ancestor_dir" != "/" ] && [ "$ancestor_dir" != "." ] && [ "$ancestor_dir" != "$prev_ancestor" ]; do
     case "$ancestor_dir/" in
       "$PROJECT_DIR/"*) ;;
       *) break ;;
     esac
     if [ -f "$ancestor_dir/CONCEPT.md" ]; then
       relative_ancestor="${ancestor_dir#"$PROJECT_DIR"/}/CONCEPT.md"
-      anc_interactions=$(extract_section "$ancestor_dir/CONCEPT.md" "interactions")
-      if [ -z "$anc_interactions" ]; then
-        anc_interactions=$(extract_section "$ancestor_dir/CONCEPT.md" "Interactions")
-      fi
-      anc_dependencies=$(extract_section "$ancestor_dir/CONCEPT.md" "dependencies")
-      if [ -z "$anc_dependencies" ]; then
-        anc_dependencies=$(extract_section "$ancestor_dir/CONCEPT.md" "Dependencies")
-      fi
+      anc_interactions=$(extract_section_ci "$ancestor_dir/CONCEPT.md" "interactions")
+      anc_dependencies=$(extract_section_ci "$ancestor_dir/CONCEPT.md" "dependencies")
       if [ -n "$anc_interactions" ] || [ -n "$anc_dependencies" ]; then
         boundary_context="  [SHADOWED — ancestor boundaries from ${relative_ancestor}, may not fully apply to this subdirectory]
 "
@@ -179,6 +198,7 @@ ${anc_dependencies}
       fi
       break
     fi
+    prev_ancestor="$ancestor_dir"
     ancestor_dir=$(dirname "$ancestor_dir")
   done
 fi
@@ -197,15 +217,26 @@ if [ -n "$found_specs" ]; then
       ctx="${ctx}You are editing a spec file. Ensure changes reflect the current implementation and update boundaries if needed." ;;
     *)
       if [ -n "$boundary_context" ]; then
-        ctx="${ctx}"$'\nDeclared boundaries:\n'"${boundary_context}"$'\nBEFORE writing imports, verify each import target against ## dependencies above. Imports from concepts NOT listed in ## dependencies are boundary violations.'
+        ctx="${ctx}"$'\nDeclared boundaries:\n'"${boundary_context}"
+        # Only mention `## dependencies` when at least one was actually injected
+        # (co-located CONCEPT.md or ancestor [SHADOWED] CONCEPT.md). PIPELINE.md
+        # only directories with no ancestor CONCEPT.md emit `## data boundary`
+        # alone — referencing `## dependencies` there is misleading.
+        if [ -n "$dependencies" ] || [ -n "$anc_dependencies" ]; then
+          ctx="${ctx}"$'\nBEFORE writing imports, verify each import target against ## dependencies above. Imports from concepts NOT listed in ## dependencies are boundary violations.'
+        else
+          ctx="${ctx}"$'\nVerify changes respect the boundaries declared above.'
+        fi
       else
         ctx="${ctx}Verify changes align with declared actions, invariants, and operational principles."
       fi ;;
   esac
 
-  # Output as structured JSON with additionalContext (official PreToolUse API)
-  # This ensures Claude receives drift context reliably, per hooks reference docs
-  jq -n --arg ctx "$ctx" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:$ctx}}'
+  # Output as structured JSON with additionalContext (official PreToolUse API).
+  # `|| true` guards the load-bearing emit: if jq dies (missing binary, OOM, ARG_MAX
+  # overflow on huge $ctx), the hook exits 0 without output rather than failing
+  # the tool call. SessionStart already warned about missing jq once per session.
+  jq -n --arg ctx "$ctx" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:$ctx}}' || true
 fi
 
 exit 0

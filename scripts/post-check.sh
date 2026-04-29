@@ -8,7 +8,12 @@
 
 set -euo pipefail
 
-input=$(cat)
+# Guard against stdin failure (closed pipe, exotic exec env). Empty input is
+# treated as no-op rather than aborting under set -euo pipefail.
+input=$(cat) || input=""
+if [ -z "$input" ]; then
+  exit 0
+fi
 # jq is required — if missing, file_path stays empty and we exit below.
 # This is intentional: SessionStart hook warns about missing jq (fires once
 # per session). NotebookEdit uses notebook_path instead of file_path — try both.
@@ -52,18 +57,34 @@ case "$file_path" in
   *) file_path="$PROJECT_DIR/$file_path" ;;
 esac
 
-# Extract a section from a spec file (between ## heading and next ##)
+# Extract a section from a spec file (between ## heading and next ##).
+# Trailing `|| true` intentionally swallows sed errors — empty result == "section
+# absent" by contract.
 extract_section() {
   local file="$1" section="$2"
   tr -d '\r' < "$file" | sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{/^## ${section}[[:space:]]*$/d;/^## [^#]/d;p;}" 2>/dev/null \
     | sed '/^$/d' || true
 }
 
+# Case-insensitive section extraction: lowercase first, capitalized fallback
+# (older specs use `## Dependencies`, newer specs use `## dependencies`).
+extract_section_ci() {
+  local file="$1" section="$2"
+  local result=""
+  result=$(extract_section "$file" "$section") || result=""
+  if [ -z "$result" ]; then
+    result=$(extract_section "$file" "${section^}") || result=""
+  fi
+  printf '%s' "$result"
+}
+
 # Walk upward from file's directory to find nearest CONCEPT.md
 dir=$(dirname "$file_path")
 concept_path=""
 
-while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
+# prev_dir guards against pathological dirname behavior (defense in depth).
+prev_dir=""
+while [ "$dir" != "/" ] && [ "$dir" != "." ] && [ "$dir" != "$prev_dir" ]; do
   case "$dir/" in
     "$PROJECT_DIR/"*) ;;
     *) break ;;
@@ -72,6 +93,7 @@ while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
     concept_path="$dir/CONCEPT.md"
     break
   fi
+  prev_dir="$dir"
   dir=$(dirname "$dir")
 done
 
@@ -79,11 +101,8 @@ if [ -z "$concept_path" ]; then
   exit 0
 fi
 
-# Extract dependencies (lowercase priority; capitalized fallback for older specs)
-dependencies=$(extract_section "$concept_path" "dependencies")
-if [ -z "$dependencies" ]; then
-  dependencies=$(extract_section "$concept_path" "Dependencies")
-fi
+# Extract dependencies (case-insensitive)
+dependencies=$(extract_section_ci "$concept_path" "dependencies")
 
 # No dependencies declared — nothing to remind about
 if [ -z "$dependencies" ]; then
@@ -99,6 +118,8 @@ Declared dependencies:
 ${dependencies}
 Verify any imports added by this edit target only declared dependencies above. Imports from undeclared concepts are boundary violations."
 
-jq -n --arg ctx "$ctx" '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:$ctx}}'
+# `|| true` guards the load-bearing emit: if jq dies the hook exits 0 silently
+# rather than failing the user's edit. SessionStart already warned about jq once.
+jq -n --arg ctx "$ctx" '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:$ctx}}' || true
 
 exit 0
