@@ -128,7 +128,8 @@ When designing from a sync description:
 2. Ask: "Are the timing patterns correct? Should any syncs be split or merged?"
 3. Only write the `SYNCS.md` file after the user approves
 4. If a `SYNCS.md` already exists, show a diff of proposed changes
-5. If related CONCEPT.md specs exist, suggest: "Run `/wyx:concept drift` to verify
+5. If `ARCHITECTURE.md` exists in the project, remind the user: "SYNCS.md changed — run `/wyx:map` to regenerate ARCHITECTURE.md." The `## coordination graph` is the highest-priority source for architecture map edges (per `/wyx:map` Step 2 priority order #1), so sync changes are graph-relevant.
+6. If related CONCEPT.md specs exist, suggest: "Run `/wyx:concept drift` to verify
    sync references match current concept declarations."
 
 ## Relationship to Other wyx Skills
