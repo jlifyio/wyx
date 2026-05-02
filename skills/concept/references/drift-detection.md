@@ -30,7 +30,8 @@ When spawning Explore agents for parallel drift scanning, include this in each a
 1. The assigned spec paths and their types (CONCEPT/PIPELINE/SYNCS)
 2. The full "Drift calibration" block from this document (verbatim)
 3. The relevant check table(s) for the assigned spec types — **severity values are authoritative; agents must copy them verbatim and must not escalate on their own judgment**
-4. Output requirement: verdict for every check category — omitted = unverified
+4. Project conventions: instruction to read the project's `CLAUDE.md` / `AGENTS.md` (project root) and note any documented cross-cutting parameter conventions (e.g., dependency-injection params, scoping params). Undocumented appearances of these conventions in the spec's `## actions` are Medium "Cross-cutting parameter" findings even at single-spec scope.
+5. Output requirement: verdict for every check category — omitted = unverified
 
 ## What to check for each CONCEPT.md
 
@@ -76,6 +77,7 @@ When spawning Explore agents for parallel drift scanning, include this in each a
 - Before reporting a finding as Medium or higher, verify it exists in the current code with grep or file read. Do not report drift based on memory or assumptions from prior file reads.
 - If a single spec accumulates more than 5 Low findings (after deduplication), note this in the drift report summary and suggest re-evaluating whether the spec's `## actions` or `## state` adequately describes the module's current public surface.
 - Cross-concept data access documented in the source concept's `## known coupling` section should be treated as Low severity rather than Critical/High. Undocumented cross-concept data access remains Critical.
+- Sanctioned coupling: invoking another concept's declared actions through their public API (including from SYNC handlers) is not a boundary violation. Boundary violations require importing internal files/symbols that bypass the action interface.
 - **Use check-table severity verbatim.** The severity values in the check tables are calibrated — do not promote Low to Medium, or Medium to High, based on independent judgment about impact. If a finding is more severe than its initial category suggests, **reclassify it into the correct check category** (e.g., a "Missing action" finding that is actually cross-concept internal access → "Boundary violation" at Critical). Do not escalate severity within a category; only downward adjustments via the calibration rules above (e.g., private helper → Low, naming convention → Low) are allowed.
 
 ## Drift Report Format

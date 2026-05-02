@@ -143,7 +143,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Documentation
 
-- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-014). Check before making architectural changes.
+- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-015). Check before making architectural changes.
 
 ## Design Decisions
 

@@ -343,3 +343,36 @@ Add a PostToolUse hook (~90 lines) that reinjects the `## dependencies` list fro
 - Prevention gap partially addressed — PostToolUse prompts the LLM to verify its edit against declared dependencies
 - Hook fatigue risk mitigated by silent-on-clean design (PostToolUse only outputs when a CONCEPT.md with dependencies exists nearby)
 - DA self-correction recorded: "Previous DA should have challenged the MECHANISM, not the CONCEPT. A DA's job is precision, not obstruction."
+
+## DEC-015: Drift Detection Wording — Sanctioned Coupling, Project Conventions, Per-File Cohesion
+
+**Date:** 2026-05-02
+**Status:** Accepted
+**Source:** Field feedback from two operating sessions (yorisen, aofuda) + 3-agent debate (field-voice/principle-guardian/devils-advocate, Opus)
+
+### Context
+Two field-operating sessions surfaced three drift-detection failure modes:
+1. Drift agents recurringly flag `OtherConcept.publicAction()` calls as Critical "Boundary violation" despite the existing "(not through declared actions)" qualifier — observed 4+ times in `.claude/wyx-drift-history.jsonl` across multiple sessions.
+2. Per-spec parallel agents miss cross-cutting parameter additions (e.g., `tenant: string` multi-tenant scoping) when only 2/N specs catch the pattern — Step 3 systemic pattern aggregation requires 3+ specs to fire, leaving 2-vs-2 cases as silent gaps.
+3. Retrofit of mixed-cohesion directories (concept-shaped file + infrastructure siblings) defaults to one bloated spec covering all files — existing Retrofit Mode Guidelines check cross-CONCEPT.md overlap but not within-directory cohesion.
+
+### Decision
+Three minimal wording additions, no new sections or mechanisms:
+1. **Sanctioned coupling line** in `drift-detection.md` calibration block: `Sanctioned coupling: invoking another concept's declared actions through their public API (including from SYNC handlers) is not a boundary violation.`
+2. **Project conventions item** in `drift-detection.md` agent prompt template (item 4): instructs Explore agents to read project `CLAUDE.md` / `AGENTS.md` and treat undocumented appearances of documented cross-cutting params as Medium "Cross-cutting parameter" findings even at single-spec scope.
+3. **Per-file cohesion sentence** in `concept/SKILL.md` Retrofit step 4: `If the directory contains a mix of concept-shaped files (with state ownership and lifecycle) and infrastructure files (stateless utilities, type definitions, schemas), spec only the concept-shaped subset and list infrastructure as ## dependencies, not as concept subjects.`
+
+Total delta: 4 lines added across 2 files. No new sections. No language-specific code. No conflict with existing "language-agnostic, hooks extract; the LLM judges" principles.
+
+### Alternatives Considered
+- **Add Step 4 cross-cutting signature sweep** (yorisen original proposal): Rejected. Original proposal included TypeScript-specific grep (`grep "db: Sql,"`) violating language-agnostic principle. Opt-in/language-neutral compromise (field-voice + principle-guardian convergence) was further rejected because DA identified it as redundant with existing line 45 (Cross-cutting parameter check) and lines 134-144 (Systemic pattern aggregation). Real cause is per-spec agents not consulting project conventions — fixed by item 2 above instead.
+- **Add new Retrofit step 9 (per-file scope rule)** (yorisen original proposal): Rejected. Existing Retrofit step 4 (state ownership) is the natural insertion point. New step 9 would push the guideline list to 9 steps with diminishing returns.
+- **Lower systemic pattern aggregation threshold from 3+ to 2+ specs**: Rejected. Field-voice tested in own project: `db:Sql` first-param is intentionally project-wide, threshold 2 would produce 17/17 false positives.
+- **DA's transitive boundary leak addition** to #1: Rejected. Theoretically sound (a sanctioned action's implementation re-importing internals is a separate violation) but rarely material in practice; complicates the rule for marginal benefit.
+
+### Consequences
+- Drift agents reclassify public-action calls correctly — false positives observed in drift-history should drop.
+- Cross-cutting parameter detection improves at single-spec scope when project documents the convention (e.g., wyx CLAUDE.md, yorisen CLAUDE.md L79).
+- Retrofit avoids over-inclusive specs in mixed-cohesion directories (e.g., `db/tenant.ts` is concept, `db/client.ts/schema.ts` are dependencies).
+- Validates the "minimal wording > new sections" pattern: the original yorisen proposals were 3 substantial additions; the accepted form is 4 lines total. Future field feedback should default to wording fixes before structural changes.
+- Confirms 3-agent debate value: field-voice + principle-guardian converged on a wrong answer (#2 opt-in Step 4) that DA overturned via redundancy critique. Two-agent symmetry is insufficient.
