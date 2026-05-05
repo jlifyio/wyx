@@ -33,15 +33,17 @@ skills/
 
 ### Skills
 
-**`/wyx:audit`** — Discovery-only project scanner (~155 lines, read-only). Scans for spec coverage gaps, detects pipeline/sync candidates via code pattern analysis, and outputs a dependency-ordered TODO list of individual skill commands. Uses Glob+Grep directly (no subagents). Evaluates directories for behavioral cohesion before flagging — type definitions, stateless utilities, thin store wrappers, and schema-only directories are filtered, with concrete signal examples (state ownership, lifecycle, persistence, events) guiding the evaluation. Checks each spec for boundary-contributing sections (`## interactions`/`## dependencies`/`## data boundary`) and flags specs providing zero hook protection. When all modules have specs, outputs a concise coverage status instead of empty tables. Does not generate specs or modify files.
+Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-line invocation summaries. For Five Design Rules, drift calibration, retrofit guidance, and per-skill internals, read `skills/<name>/SKILL.md` (and `skills/<name>/references/` where present).
 
-**`/wyx:concept`** — Generates structured concept specs (CONCEPT.md) as compressed context for code generation. Four modes: Retrofit (path arg), Greenfield (text arg), Drift (`drift [path]`), Discovery (no args). Format: purpose + state + actions + operational principle + interactions + dependencies. Five Design Rules: (1) single purpose, (2) concept independence, (3) state ownership, (4) actions as interface, (5) actions as declarations not events (cross-cutting infrastructure should be its own concept). Retrofit mode guides authors to focus on public contract fields (omit implementation details from `## state`) and cross-references state with other CONCEPT.md specs to flag Rule 3 overlaps. Drift mode includes cross-spec reference validation (PIPELINE/SYNCS→CONCEPT name matching), systemic pattern aggregation, cross-cutting parameter detection, `## known gaps` resolution checking, and calibration rules (type wrapper differences = Low, implementation-detail fields = Low, private helper methods = Low, naming convention differences = Low, repeated identical Lows deduplicated, grep-verify before Medium+ reporting, Resolved `## known coupling` entries = Low, reclassify drift into the correct check category rather than upgrading severity, >5 Low per spec triggers re-evaluation advisory). Drift history JSONL tracks Low counts for accumulation trending.
+**`/wyx:audit`** — Read-only project scanner. Reports spec coverage gaps, pipeline/sync candidates, and a dependency-ordered TODO list of skill commands. Filters non-concept directories (types, utilities, schemas, thin store wrappers) before flagging. Does not generate specs.
 
-**`/wyx:pipeline`** — Data pipeline specialization. Produces `PIPELINE.md` with sources, stages, outputs, quality invariants. Three modes: Retrofit (path arg), Greenfield (text arg), Discovery (no args).
+**`/wyx:concept`** — Generates `CONCEPT.md` (purpose + state + actions + operational principle + interactions + dependencies). Four modes: Retrofit (path), Greenfield (text), Drift (`drift [path]`), Discovery (no args). Embodies the Five Design Rules and drift calibration — full definitions in `skills/concept/SKILL.md`.
 
-**`/wyx:map`** — Generates `ARCHITECTURE.md` from all wyx specs in a project. Reads CONCEPT.md, PIPELINE.md, and SYNCS.md to produce a Mermaid relationship graph, dependency matrix, data flow paths, and coverage report. Single mode: Generate (optional path arg for subtree scoping). Output follows 7 determinism constraints for reproducible Mermaid across invocations.
+**`/wyx:pipeline`** — Generates `PIPELINE.md` (sources, stages, outputs, quality invariants). Three modes: Retrofit / Greenfield / Discovery.
 
-**`/wyx:sync`** — Documents concept coordination through sync handlers. Where CONCEPT.md `## interactions` declares relationships, `SYNCS.md` specifies execution mechanics: timing, qualification, error isolation, data flow. Three modes: Retrofit (path arg), Greenfield (text arg), Discovery (no args).
+**`/wyx:map`** — Generates `ARCHITECTURE.md` from all wyx specs (Mermaid graph, dependency matrix, data flow, coverage). Single mode with optional path scoping. 7 determinism constraints for reproducible Mermaid.
+
+**`/wyx:sync`** — Generates `SYNCS.md` documenting concept coordination through sync handlers (timing, qualification, error isolation, data flow). Three modes: Retrofit / Greenfield / Discovery.
 
 ### Hooks
 
