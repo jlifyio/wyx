@@ -376,3 +376,31 @@ Total delta: 4 lines added across 2 files. No new sections. No language-specific
 - Retrofit avoids over-inclusive specs in mixed-cohesion directories (e.g., `db/tenant.ts` is concept, `db/client.ts/schema.ts` are dependencies).
 - Validates the "minimal wording > new sections" pattern: the original yorisen proposals were 3 substantial additions; the accepted form is 4 lines total. Future field feedback should default to wording fixes before structural changes.
 - Confirms 3-agent debate value: field-voice + principle-guardian converged on a wrong answer (#2 opt-in Step 4) that DA overturned via redundancy critique. Two-agent symmetry is insufficient.
+
+## DEC-016: Post-Fix Drift Re-Scan — Documentation Over Mechanism
+
+**Date:** 2026-05-30
+**Status:** Accepted
+**Source:** User report ("does the drift warning sometimes not clear?") + 3-agent debate (architect/minimalist/devils-advocate, Opus) with lead synthesis and independent file verification
+
+### Context
+The SessionStart "Specs modified since last drift check" reminder (`session-start.sh:117-125`) is mtime-based and anchors find-newer on the last **detect** entry's `ts` — never the JSONL file mtime, never the fix `ts` (the v0.21.0 false-positive came from using file mtime). Three reliability gaps were raised:
+1. **③ post-fix re-fire**: after a detect+fix in one session, the just-fixed spec's mtime exceeds `detect_ts`, so the reminder re-fires next session. This is the v0.17/v0.21 invariant working as designed (`session-start.sh:107-117`: "a fix entry is a mid-workflow marker, not a new measurement").
+2. **① history-append skip**: the `.jsonl` append (drift-detection.md Phase 3, steps 9-10) is an LLM-manual step; if skipped, the reminder never refreshes.
+3. **② closing cannot verify the append** — out of scope (workflow-kit's `closing`, a separate plugin); handed off via a maintainer prompt, not addressed here.
+User asked to "improve all in wyx." Debate concluded that most of "all" should NOT be done.
+
+### Decision
+**One optional documentation paragraph** in `drift-detection.md` Phase 3 (after the append-only note, before "Snapshot semantics"). It documents the honest recovery — re-run `/wyx:concept drift` to write a fresh `detect` anchor whose ts post-dates the fixes — and carries a **no-fabrication guardrail (MUST)**: never hand-write a `detect` entry with `specs_with_drift: 0` without re-measuring. Zero script edits, zero new files. Gap ① = no change (true-zero).
+
+### Alternatives Considered
+- **③-A: re-anchor find-newer on fix `ts` when `specs_remaining=0`** (`session-start.sh`): Rejected (unanimous). `specs_remaining` is an LLM-reported integer (drift-detection.md:181); anchoring on it to *suppress* the warning converts a benign false-positive (a nag) into a dangerous false-**negative** (hidden drift = the stale-spec failure mode, wyx's named worst case) whenever the LLM under-counts. Also re-opens the v0.21.0 invariant.
+- **③-B: append a post-fix `detect` entry with `specs_with_drift: 0`**: Rejected (unanimous, independently derived by all three). Either it means re-running the full scan (= the 2-pass drift already rejected in DEC-013 A4) or writing `detect: 0` without re-scanning (= fabricating a measurement that never ran, poisoning the append-only record and `low_by_spec` trend, and silencing both drift signals when untouched specs still drift). The surviving doc note explicitly forbids this as the user-facing footgun.
+- **`scripts/record-drift.sh` helper for ①**: Rejected (unanimous). A *writing* helper inverts "hooks extract and inject; the LLM judges" (DEC-014); a 4th script is DEC-013 feature-depth plus DEC-012's "hook-script sync is itself a drift problem"; and the read side already degrades gracefully on malformed JSONL (`session-start.sh:78-95`). The LLM must still remember to call it — zero gain on the root cause.
+- **Re-bold Phase 3 step 9 ("append is required")**: Rejected as theater. The premise of ① is that the step is skipped; strengthening an already-imperative step has zero behavioral delta. Gap ① is also hypothetical (no `wyx-drift-history.jsonl` in-repo, no field-observed skip) and self-healing (a skipped append recovers on the next scan; `suggest_drift` stays true meanwhile, so drift is never hidden) — under DEC-013 it earns no edit.
+
+### Consequences
+- Net change: 1 documentation paragraph; the drift mechanism, hooks, and scripts are untouched. Respects DEC-010/012/013/014/015 and the detect_ts invariant.
+- The guardrail's value is forward-looking footgun-prevention (a future contributor "fixing" ③ via synthetic `detect: 0` would inject silent masked drift), not a workflow nag the LLM must obey — an optional re-run skipped by the LLM fails safe (③ re-fires harmlessly, self-clears on the next real detect).
+- The note is written to describe the reminder by behavior, not by quoting `session-start.sh`'s exact string, so it does not couple `drift-detection.md` to the hook's wording (avoids the meta-drift the change would otherwise introduce).
+- Lead-verifies-agent-output is load-bearing: the debate's reasoning was sound, but the relayed implementation instructions named a nonexistent section ("After Drift Report") and mis-cased the quoted warning string. Independent file verification at synthesis time caught both before any edit. Multi-agent consensus improves *conclusions*, not *citation accuracy*.
