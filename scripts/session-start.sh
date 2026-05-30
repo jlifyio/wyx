@@ -157,12 +157,15 @@ if [ "$concept_count" -gt 0 ]; then
   # Collect dirs with specs (for exclusion). Newline-fed read avoids word-splitting
   # on spec paths containing whitespace — `$concepts $pipelines $syncs` unquoted
   # would corrupt entries like `My Project/src/auth/CONCEPT.md`.
+  # Store newline-delimited (not pipe-joined): the membership test below uses a
+  # fixed-string match, so a dir path containing regex metacharacters — e.g. a
+  # SvelteKit route group `src/routes/(app)/` — can never inject into an ERE and
+  # cause a spec'd directory to be misreported as uncovered.
   spec_dirs=""
   while IFS= read -r spec_file; do
     [ -z "$spec_file" ] && continue
-    spec_dirs="$spec_dirs|$(dirname "$spec_file")"
+    spec_dirs="$spec_dirs$(dirname "$spec_file")"$'\n'
   done <<< "$(printf '%s\n%s\n%s' "$concepts" "$pipelines" "$syncs")"
-  spec_dirs="${spec_dirs#|}"  # strip leading |
 
   uncovered=$(find "$PROJECT_DIR" -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" \
@@ -177,7 +180,7 @@ if [ "$concept_count" -gt 0 ]; then
     | awk -v threshold=2 '$1 > threshold { print $2 }' \
     | while IFS= read -r d; do
         # Skip dirs that have a spec
-        if [ -n "$spec_dirs" ] && echo "$d" | grep -qE "^($spec_dirs)$"; then
+        if [ -n "$spec_dirs" ] && grep -qxF -- "$d" <<<"$spec_dirs"; then
           continue
         fi
         rel="${d#"$PROJECT_DIR"/}"

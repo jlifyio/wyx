@@ -128,6 +128,8 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 **Relative path resolution**: Files from tool input may be relative — resolve with `case "$file_path" in /*) ;; *) file_path="$PROJECT_DIR/$file_path" ;; esac`.
 
+**Directory membership by fixed string, not regex**: When testing whether a discovered directory belongs to a known set (e.g. `session-start.sh` uncovered-modules detection), keep the candidate paths newline-delimited and match with `grep -qxF` (fixed-string, whole-line) — do not interpolate paths into an ERE like `grep -qE "^($dirs)$"`. Directory paths legitimately contain regex metacharacters (SvelteKit route groups `(app)`, dotted dirs `v1.2`), which an ERE misinterprets, causing a spec'd directory to be misreported as uncovered.
+
 **PreToolUse/PostToolUse output format**: Must use `hookSpecificOutput.additionalContext` (structured JSON via `jq -n`). Plain text stdout is only shown in verbose mode per official docs.
 
 **JSONL reading**: Use `grep -v '^[[:space:]]*$' file | tail -1` instead of `tail -1` — Claude's Write tool may append trailing empty lines.

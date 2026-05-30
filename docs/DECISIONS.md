@@ -404,3 +404,25 @@ User asked to "improve all in wyx." Debate concluded that most of "all" should N
 - The guardrail's value is forward-looking footgun-prevention (a future contributor "fixing" ③ via synthetic `detect: 0` would inject silent masked drift), not a workflow nag the LLM must obey — an optional re-run skipped by the LLM fails safe (③ re-fires harmlessly, self-clears on the next real detect).
 - The note is written to describe the reminder by behavior, not by quoting `session-start.sh`'s exact string, so it does not couple `drift-detection.md` to the hook's wording (avoids the meta-drift the change would otherwise introduce).
 - Lead-verifies-agent-output is load-bearing: the debate's reasoning was sound, but the relayed implementation instructions named a nonexistent section ("After Drift Report") and mis-cased the quoted warning string. Independent file verification at synthesis time caught both before any edit. Multi-agent consensus improves *conclusions*, not *citation accuracy*.
+
+## DEC-017: "Improve All" (create-plugin Review) — One Correctness Fix, Three Rejections
+
+**Date:** 2026-05-30
+**Status:** Accepted
+**Source:** `/plugin-dev:create-plugin`-perspective review (plugin-validator + Explore agents + lead) → user "improve all" → 3-agent debate (architect/minimalist/devils-advocate, Opus) with lead synthesis and independent before/after verification
+
+### Context
+A create-plugin-perspective review produced five findings. The user said "improve all" — the same phrase that, in DEC-016, the debate filtered down to a single change. Four candidates remained after #5 (`session-start.sh:246` "today unbound") was withdrawn at review time as a false alarm (the `|| true` is *inside* the `$()`, so the var is always assigned — a relayed agent error the lead caught by reading the line).
+
+### Decision
+**Ship one correctness fix (#1); reject the other three.** The fix corrects a dirname→regex-injection bug in the SessionStart uncovered-modules detector: `spec_dirs` (directory paths) was `|`-joined and interpolated raw into an ERE (`grep -qE "^($spec_dirs)$"`), so any spec'd directory whose path contains a regex metacharacter was misreported as uncovered. Verified concretely on the author's SvelteKit stack: a route-group directory `src/routes/(app)/dashboard/` containing a `CONCEPT.md` was reported "Uncovered" before the fix and correctly excluded after. Impact is SessionStart **advisory text only** — no effect on boundary injection, edits, or safety. The fix is a coupled 3-line edit (a naive one-line swap to `grep -qxF` against the `|`-blob matches nothing — flagged by the devil's advocate): store `spec_dirs` newline-delimited, drop the leading-`|` strip, and test membership with `grep -qxF -- "$d" <<<"$spec_dirs"` (fixed-string, whole-line — metacharacters never reach a regex engine). Semantically identical to the old anchored match for metachar-free paths; only the broken case changes.
+
+### Alternatives Considered
+- **#2 — drop the bare `"wyx"` trigger from 4 skills (keep it only on `audit`)**: Rejected (unanimous). Behavior/discoverability change, not a bug. Zero field evidence of misrouting — the non-determinism is purely theoretical, and no member could produce a concrete mis-routing prompt. `audit` is the intended front door and Claude disambiguates from context. If ever revisited, it needs a deliberate pass *with* a routing test, not a ride-along on a bug fix.
+- **#3 — add `.remember/` to the root `.gitignore`**: Rejected (unanimous, evidence-hardened). `git check-ignore -v .remember/` already matches via the nested `.remember/.gitignore`; nothing is tracked; the marketplace is a separate repo. Zero distribution impact — pure redundancy.
+- **#4 — add `email`/`url` to the `author` object in `plugin.json`**: Rejected (unanimous). Cosmetic, and adding the maintainer's personal email would *publish* it to the marketplace — a privacy regression, not a fix. Plausibly an intentional omission.
+
+### Consequences
+- Net change: one coupled 3-line correctness fix in `session-start.sh`, plus this record. The hooks, skills, and the rest of the script are untouched. Respects YAGNI and the "fixes not features" / "minimal change" pattern (DEC-003, DEC-013, DEC-016).
+- The `dirname`-as-regex class is closed for this detector: fixed-string whole-line matching cannot be re-broken by metacharacter paths (`src/v1.2/`, `src/foo+bar/`, dotted dirs, route groups).
+- Reaffirms two meta-lessons from DEC-016: (a) "improve all" is a filter prompt, not a mandate — most of "all" was correctly rejected; (b) lead-verifies-agent-output is load-bearing — the debate endorsed a one-line fix that was broken, and a withdrawn finding (#5) was an agent misread; both were caught only by the lead reading/running the actual code, not by consensus.
