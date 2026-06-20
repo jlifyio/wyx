@@ -7,7 +7,7 @@ description: >
   of wyx skill commands for uncovered modules. Scans for coverage gaps,
   pipeline/sync candidates, and outputs dependency-ordered commands.
 argument-hint: "e.g. src/lib/ to scope subtree, or leave empty for full project"
-allowed-tools: Read, Glob, Grep
+allowed-tools: Read, Glob, Grep, Bash
 ---
 
 # Project Audit & Command Planner
@@ -17,8 +17,12 @@ This skill does NOT generate specs — it identifies what needs specs and output
 Unlike SessionStart (which reports counts), this adds: pattern-based pipeline/sync
 candidate detection and dependency-ordered command sequences.
 
-**Tool constraint**: Use only Glob, Grep, and Read. Do NOT use Bash, shell commands,
-`find`, or subagents for any step. File discovery and counting must use Glob results.
+**Tool constraint**: Prefer Glob, Grep, and Read for all discovery and counting; do NOT
+use subagents. **Degraded mode** — some harnesses expose no Glob/Grep tools at all; when
+they are unavailable, fall back to **read-only** shell via Bash for discovery only
+(`find` / `ls` / `grep -r` to *list and read* files). Never use Bash to write, edit,
+move, or generate files — audit stays strictly read-only (DEC-001/011) on every
+discovery path: it reports, it never produces artifacts.
 
 ## How to interpret $ARGUMENTS
 
@@ -41,7 +45,7 @@ should have `## data boundary`. Note any spec missing all its expected boundary 
 ## Step 2: Identify Uncovered Modules
 
 Find directories with more than 2 source files lacking any colocated spec (CONCEPT.md, PIPELINE.md, or SYNCS.md). This matches the SessionStart hook's exclusion set — any of the three spec types protects a directory from being flagged.
-**Use Glob only** — never use Bash/find/shell commands for file discovery.
+**Prefer Glob**; if no Glob tool exists in the harness, use read-only shell (`find` / `ls`) for discovery only — never to write or modify files.
 
 How to count source files per directory using Glob:
 1. Run Glob for `**/*.{ts,js,tsx,jsx,svelte,vue,py,rs,go,java}` (scoped to path if given)
@@ -50,7 +54,8 @@ How to count source files per directory using Glob:
 
 Exclude directories matching: `tests/`, `test/`, `docs/`, `migrations/`, `node_modules/`,
 `.git/`, `dist/`, `build/`, `components/ui/`, `__pycache__/`, `.svelte-kit/`, `target/`,
-`.claude/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`.
+`.claude/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`, `utils/`, `util/`,
+`helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`.
 
 Before flagging a directory, evaluate for behavioral cohesion — directories containing
 only type definitions, stateless utility functions, thin store wrappers, or schema

@@ -85,6 +85,11 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
   last_ts=$(echo "$last_entry" | jq -r '.ts // empty' 2>/dev/null) || last_ts=""
   # action defaults to "detect" for backward compat with pre-v0.23 entries
   last_action=$(echo "$last_entry" | jq -r '.action // "detect"' 2>/dev/null) || last_action="detect"
+  # Scope annotation: a scoped detect entry (path != whole project) can be the latest
+  # JSONL entry, so its "0 with drift" must not read as a project-wide all-clear. Show
+  # the path so a scoped measurement is not mistaken for full-project clean. Fix entries
+  # carry no `path` field, so this stays empty (no annotation) for them by design.
+  last_path=$(echo "$last_entry" | jq -r '.path // empty' 2>/dev/null) || last_path=""
   if [ "$last_action" = "fix" ]; then
     # Fix entry: report remaining drift and the originating detect's timestamp
     last_drift=$(echo "$last_entry" | jq -r '.specs_remaining // 0' 2>/dev/null) || last_drift="0"
@@ -94,6 +99,11 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
     last_drift=$(echo "$last_entry" | jq -r '.specs_with_drift // 0' 2>/dev/null) || last_drift="0"
     detect_ts="$last_ts"
   fi
+  scope_note=""
+  case "$last_path" in
+    ""|project|.|"$PROJECT_DIR") ;;  # whole-project measurement — no scope annotation
+    *) scope_note=" [scope: $last_path]" ;;
+  esac
   if [ -n "$last_ts" ]; then
     if [ "$last_action" = "fix" ]; then
       if [ "$last_drift" = "0" ]; then
@@ -102,7 +112,7 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
         echo "Last drift check: $detect_ts ($last_drift spec(s) pending after fix at $last_ts)"
       fi
     else
-      echo "Last drift check: $last_ts ($last_drift spec(s) with drift — rerun to update)"
+      echo "Last drift check: $last_ts ($last_drift spec(s) with drift — rerun to update)$scope_note"
     fi
     # Build a single reference file representing the last drift *measurement*.
     # Always use the detect ts (not fix ts): a fix entry is a mid-workflow
@@ -191,6 +201,9 @@ if [ "$concept_count" -gt 0 ]; then
           */components/ui|*/components/ui/*) continue ;;
           */types|types/*|*/e2e|e2e/*|*/cypress|cypress/*) continue ;;
           */fixtures|fixtures/*|*/stubs|stubs/*|*/mocks|mocks/*) continue ;;
+          */utils|utils/*|*/util|util/*|*/helpers|helpers/*) continue ;;
+          */scripts|scripts/*|*/schema|schema/*|*/schemas|schemas/*) continue ;;
+          */constants|constants/*|*/config|config/*) continue ;;
         esac
         printf '%s\n' "$rel"
       done \
