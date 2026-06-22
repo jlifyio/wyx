@@ -77,7 +77,7 @@ Derive the graph edges from specs using this **priority order** (higher = more a
 - Sync nodes: `ID(("ShortName")):::sync` (double parentheses = circle)
 - Pipeline nodes: `ID["Pipeline Name"]:::pipeline` (rectangle with pipeline class)
 - External nodes: `ID["External Name"]:::external` (rectangle, listed before concept subgraph)
-- Infrastructure concepts: `ID["Name"]:::infra` (for utility/infra concepts like loggers)
+- Infrastructure concepts: `ID["Name"]:::infra` — an **optional cosmetic style** only. Do NOT derive it: there is no deterministic test for "is this infra" (authors legitimately model a functionally-identical persistence concept as either a plain concept node or `:::infra`). No map rule reads this label; it sets colour alone. Preserve an `:::infra` the spec or a prior map already used; never add or strip one as a "fix."
 
 ## ARCHITECTURE.md Format
 
@@ -118,10 +118,10 @@ graph TB
     B -->|action| S2 --> C
     P1 -.- S1
 
-    classDef external fill:#f9f,stroke:#333,stroke-width:1px
-    classDef sync fill:#ffd,stroke:#f90,stroke-width:2px
-    classDef pipeline fill:#dff,stroke:#09f,stroke-width:2px
-    classDef infra fill:#eee,stroke:#999,stroke-width:1px
+    classDef external fill:#eceef0,stroke:#5c6770,stroke-width:1.5px
+    classDef sync fill:#fff3c4,stroke:#e8870c,stroke-width:2px
+    classDef pipeline fill:#d8f5f0,stroke:#0c9488,stroke-width:2px
+    classDef infra fill:#f1f3f5,stroke:#b0b7be,stroke-width:1px
 ```
 
 ## dependency matrix
@@ -151,14 +151,15 @@ These ensure reproducible output across invocations:
 1. **Node ordering**: Concepts listed alphabetically by name within each subgraph. External nodes alphabetically before the concept subgraph.
 2. **Subgraph ordering**: Fixed layer order: External nodes -> Concept Layer -> Sync Layer -> Pipeline Layer. Omit empty layers (e.g. no pipelines subgraph if no PIPELINE.md found).
 3. **Edge ordering**: Grouped by source node (alphabetical), then by target (alphabetical) within each source.
-4. **classDef styles**: Copy these EXACTLY — hardcoded hex values, never choose different colors:
-   - `classDef external fill:#f9f,stroke:#333,stroke-width:1px`
-   - `classDef sync fill:#ffd,stroke:#f90,stroke-width:2px`
-   - `classDef pipeline fill:#dff,stroke:#09f,stroke-width:2px`
-   - `classDef infra fill:#eee,stroke:#999,stroke-width:1px`
+4. **classDef styles**: Copy these EXACTLY — hardcoded hex values, never choose different colors. Concept nodes are intentionally left to Mermaid's default style so the concept layer (the protagonist) reads as the baseline; the supporting layers sit in one muted saturation band so none of them out-shouts the concepts (external is a muted neutral boundary, not a loud fill):
+   - `classDef external fill:#eceef0,stroke:#5c6770,stroke-width:1.5px`
+   - `classDef sync fill:#fff3c4,stroke:#e8870c,stroke-width:2px`
+   - `classDef pipeline fill:#d8f5f0,stroke:#0c9488,stroke-width:2px`
+   - `classDef infra fill:#f1f3f5,stroke:#b0b7be,stroke-width:1px`
 5. **Edge direction**: Provider TO consumer (see Step 2 convention).
 6. **Table row ordering**: Alphabetical by concept name.
 7. **Edge labels**: Exact verbs from specs, never paraphrased.
+8. **Matrix cell enumeration**: A dependency-matrix cell MUST name its members; never collapse them to a quantifier (`All concepts`, `N of M`, `5/7`). This operates on the cell in place — it adds no node, reclassifies nothing, and never pushes a dependency into other rows (`:::external` stores stay text deps in their consumers' Depends-On; a fan-to-all concept enumerates only in its own Depended-By cell, never smeared across every consumer's Depends-On). Scope: concept and infra rows; external and sync nodes are exempt (they have no concept row). A quantifier cell passes a row-presence check while defeating reconciliation against the graph's fan edges — and is often false (e.g. "All concepts" for a store that serves 19 of 26, which hides exactly the no-own-table concepts that are wyx's redundant-data-store signal, Design Rule 5).
 
 ## Mermaid Syntax Safety Rules
 
@@ -175,8 +176,9 @@ These prevent rendering failures:
 
 These are intentional design choices, not parser limitations:
 
-- **No nested subgraphs** — Mermaid has open rendering bugs with nesting (#2345: label cutoff, #6438/#4648: direction inheritance). Use `:::infra` classDef for infrastructure concepts instead.
-- **No linking TO subgraph names** — link to nodes inside subgraphs for predictable edge routing (#6626).
+- **No nested subgraphs** — Mermaid has open rendering bugs with nesting (#2345: label cutoff, #6438/#4648: direction inheritance). Use the `:::infra` classDef for infrastructure concepts instead.
+- **No linking TO subgraph names** — link to nodes inside subgraphs for predictable edge routing (#6626). This includes summarising a fan-out: never write `Node -.-> layerName` to mean "fans out to that whole layer." Emit each fan-out edge to the individual nodes instead; the full relationship is captured losslessly per-node in the dependency matrix (Output Stability Rule 8), never relocated out of the graph. A dense node (e.g. a store every concept persists to) therefore keeps all its individual edges — see the density note below.
+- **Visual density is unsolved by design** — a large or highly-connected project renders as a dense graph, and there is no deterministic, classification-free rule that thins it. Every candidate (collapsing an "infra" fan, clustering by domain, an adaptive overview) requires identifying *which* node/edge is infra or *which* domain a concept belongs to, and no machine-readable signal for either exists in the spec format; an inferred one coin-flips run-to-run and would churn `git diff`. Determinism and a trustworthy `git diff` are prioritised over rendered density. The escape hatch for readability is **scoped mode** (`/wyx:map src/path/`), which maps one subsystem at a time without thinning anything. (A future opt-in `kind: infra` CONCEPT.md frontmatter marker is the only design that could thin deterministically — author-declared, not inferred — and is deferred as a separate spec-format decision; see DEC-020.)
 
 ## After Generating
 

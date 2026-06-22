@@ -41,7 +41,7 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 
 **`/wyx:pipeline`** — Generates `PIPELINE.md` (sources, stages, outputs, quality invariants). Three modes: Retrofit / Greenfield / Discovery.
 
-**`/wyx:map`** — Generates `ARCHITECTURE.md` from all wyx specs (Mermaid graph, dependency matrix, data flow, coverage). Single mode with optional path scoping. 7 determinism constraints for reproducible Mermaid.
+**`/wyx:map`** — Generates `ARCHITECTURE.md` from all wyx specs (Mermaid graph, dependency matrix, data flow, coverage). Single mode with optional path scoping. 8 determinism constraints for reproducible Mermaid (incl. matrix per-cell enumeration — DEC-020). Visual density at scale is an accepted limitation; scoped mode is the escape hatch.
 
 **`/wyx:sync`** — Generates `SYNCS.md` documenting concept coordination through sync handlers (timing, qualification, error isolation, data flow). Three modes: Retrofit / Greenfield / Discovery.
 
