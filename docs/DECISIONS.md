@@ -522,3 +522,31 @@ Plus a **Known-Limitation** note: rendered visual density is unsolved-by-design;
 - One-time diff on regeneration: existing maps will change their four classDef lines (palette) and, where present, a quantifier matrix cell expands to an enumeration. Both are true, reviewable diffs, not churn.
 - **The original "improve design, e.g. HTML" question is answered honestly: the large visual wins (HTML, overview, clustering, infra-collapse) do not survive wyx's determinism + no-accretion constraints; what is earned is two correctness fixes, a demotion, and a palette refresh.** The density problem is real and its only deterministic cure is the deferred `kind: infra` marker.
 - Meta-lesson: the verdict is trustworthy via adversarial **mutual error-correction**, not consensus — two impossibility/exhaustiveness proofs (no clustering key; no fan-selector), the keystone "authors classify identical concepts oppositely" finding, four corrections of the DA's own over-reaches (a stockrec edge overcount 96→79, an "always lossy" overclaim → 2/3, a fan-degree trigger, a "non-deterministic threshold" misframing), and three independent kills of the one rule the DA authored and most wanted to keep. Corrected canonical figures used above: stockrec = 79 dependency edges; clustering degenerate 3/3; infra-in-matrix lossy 2/3 (aofuda enumerated); "All concepts" false by 7 on yorisen.
+
+---
+
+## DEC-021: SessionStart Hint Gating and Honest Boundary-Injection Framing
+
+**Date:** 2026-07-08
+**Status:** Accepted
+**Source:** Multi-agent plugin review (validator / skill-reviewer / devil's-advocate / claude-code-guide)
+
+### Context
+A four-agent review of the shipped plugin surfaced two framing/behavior issues distinct from the portability bug fixes that shipped alongside them:
+
+1. **The SessionStart "No specs found" hint fired in every spec-less project, forever.** wyx is enabled at user scope (global) by default, so `session-start.sh` ran in every project the user opened. In any repo without specs — most repos, for most users — it printed `wyx: No specs found. Try /wyx:audit...` on `startup`, and re-printed it on every `resume` and every mid-session auto-`compact`. There was no dismissed-state marker, so the nag never stopped.
+2. **The one-line description over-promised.** "automatically injects module boundaries into Claude's context **on every write**" is false three ways: only `Write|Edit|NotebookEdit` (Bash and MCP file-write tools bypass), only when an ancestor CONCEPT.md/PIPELINE.md exists, and it injects *declared* boundaries — it does not parse the imports actually written. The README FAQ was already candid ("Does wyx block bad code? No"); the customer-facing headline was not.
+
+### Decision
+1. **Gate the no-specs hint on hook `source`.** `session-start.sh` reads `.source` from the hook stdin and prints the hint only when `source` is `startup` (or empty/unparseable — the safe degrade for old CLIs / missing jq). `resume`, `clear`, and `compact` stay silent. A TTY guard keeps manual `bash session-start.sh` runs from blocking on stdin.
+2. **Reframe the promise to match the FAQ's honesty.** plugin.json, README tagline, and the marketplace description now read "…injects declared module boundaries into Claude's context when it edits files near a spec." The README FAQ additionally names MCP file-write tools alongside Bash as bypass paths.
+
+### Alternatives Considered
+- **First-run marker file to suppress the nag after the first display:** rejected for now — adds writable state to a plugin that is otherwise stateless per project (drift history is the only project-local file, and it is user-triggered). Source-gating achieves the "don't nag on resume/compact" goal with zero new state.
+- **Leave the "on every write" headline (it's aspirational):** rejected — the plugin's own FAQ contradicts it, and a headline that the shipped docs refute erodes trust in the rest of the claims (which are honest and evidence-backed).
+
+### Consequences
+- A clean release no longer guarantees its own next-session false nag; spec-less sibling projects are quiet except on genuine startup.
+- Behavior change ⇒ minor version bump (0.25.0), not a patch — applied by `/release-kit:release v0.25.0` at release time (plugin.json version + README badge/tag link), so this commit still carries the 0.24.1 manifest by design.
+- Shipped in the same release: portability fixes that are bug-fixes, not decisions — quote `${CLAUDE_PLUGIN_ROOT}` in hooks.json (space-in-path total-failure), bash 3.2-safe `tr` capitalization replacing `${section^}`, `find … -prune` replacing post-walk `-not -path` filtering (≈3× faster session-start), and whitespace/hidden-root-safe directory reporting in session-start.sh.
+- Framing is context-only like every other wyx claim — honesty in the docs, not enforcement in the hook.

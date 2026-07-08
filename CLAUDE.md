@@ -47,7 +47,7 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 
 ### Hooks
 
-**SessionStart** (command): Scans project for existing wyx artifacts (CONCEPT.md, PIPELINE.md, SYNCS.md) and reports coverage in sorted order. Warns if `jq` is missing. Suggests `/wyx:audit` if none found. Also reports last drift check date from `.claude/wyx-drift-history.jsonl` (if exists), warns if specs modified since last drift check (`find -newer`), checks ARCHITECTURE.md freshness, lists uncovered modules (directories with >2 source files lacking CONCEPT.md, PIPELINE.md, or SYNCS.md), and reports code directories modified since last drift check. Non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`, `utils/`, `util/`, `helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`) are excluded from uncovered module detection. Shadowing detection flags PIPELINE.md-only directories (not SYNCS.md — SYNCS.md does not stop hook traversal).
+**SessionStart** (command): Scans project for existing wyx artifacts (CONCEPT.md, PIPELINE.md, SYNCS.md) and reports coverage in sorted order. Warns if `jq` is missing. Suggests `/wyx:audit` if none found — but **only when the hook `source` is `startup`** (or empty/unparseable, the safe degrade); on `resume`/`clear`/`compact` the no-specs hint stays silent so a globally-enabled wyx does not nag in every spec-less project (DEC-021). Also reports last drift check date from `.claude/wyx-drift-history.jsonl` (if exists), warns if specs modified since last drift check (`find -newer`), checks ARCHITECTURE.md freshness, lists uncovered modules (directories with >2 source files lacking CONCEPT.md, PIPELINE.md, or SYNCS.md), and reports code directories modified since last drift check. Non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`, `utils/`, `util/`, `helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`) are excluded at any path depth (matched against `"/$rel/"`, so a bare top-level `tests` is excluded too), and build/dependency/hidden directories are pruned during the walk (`find … -prune`, not post-walk `-not -path` filtering — ≈3× faster on large trees; the `-name '.*'` prune carries `-mindepth 1` so a hidden project root like `~/.dotfiles` is not pruned as a whole). Shadowing detection flags PIPELINE.md-only directories (not SYNCS.md — SYNCS.md does not stop hook traversal).
 
 **PreToolUse** (command, matcher: `Write|Edit|NotebookEdit`): When writing near a spec file, outputs boundary declarations via `hookSpecificOutput.additionalContext`. Extracts `## purpose` from all co-located specs (CONCEPT/PIPELINE/SYNCS) for the spec listing, plus boundary declarations: `## interactions` and `## dependencies` from CONCEPT.md, and `## data boundary` from PIPELINE.md. SYNCS.md is listed in spec context but does not stop traversal or inject boundaries. Resolves relative file paths to absolute. Handles both `file_path` (Write/Edit) and `notebook_path` (NotebookEdit) via jq fallback chain. Skips inert files (`.json`, `.jsonl`, `.lock`, `.log`, `.txt`) — no context injection for non-code files. Handles CRLF line endings via `tr -d '\r'` in extract_section. When no CONCEPT.md is co-located with the stopping spec (e.g., PIPELINE.md-only directory), looks for an ancestor CONCEPT.md and injects its boundaries with a `[SHADOWED]` caveat. Enables LLM self-checking against declared boundaries. **This is the core differentiator of wyx** — concept specs are the fuel, this hook is the engine.
 
@@ -79,7 +79,7 @@ This is a plugin repository. There is no build step, test suite, or package.json
 **Plugin structure rules**:
 - `plugin.json` goes inside `.claude-plugin/`
 - `hooks.json` goes at plugin root in `hooks/`, NOT inside `.claude-plugin/`
-- Hook scripts use `$CLAUDE_PLUGIN_ROOT` to resolve paths
+- Hook scripts use `$CLAUDE_PLUGIN_ROOT` to resolve paths. In `hooks.json`, the command MUST quote it — `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"` — because the install path lives under the user's home and an unquoted expansion breaks on any username with a space (`/Users/John Smith/…` → exit 127, all hooks dead)
 
 ## Testing
 
@@ -116,7 +116,7 @@ for s in audit concept map pipeline sync; do test -f skills/$s/SKILL.md && echo 
 
 **Trailing slash stripping**: `PROJECT_DIR="${CLAUDE_PROJECT_DIR%/}"` — double-slash breaks `case` pattern matching against `$PROJECT_DIR/`.
 
-**Case-insensitive heading extraction**: `extract_section` tries lowercase first, then Capitalized as fallback. Some projects use `## Purpose`; others use `## purpose`.
+**Case-insensitive heading extraction**: `extract_section_ci` tries lowercase first, then Capitalized as fallback. Some projects use `## Purpose`; others use `## purpose`. Capitalize with `tr`, NOT the `${var^}` expansion — `${var^}` is bash 4+ and macOS ships bash 3.2, where it errors and silently disables the fallback for legacy capitalized-heading specs.
 
 ```bash
 # extract_section uses sed address ranges between ## headings
@@ -139,7 +139,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 ## Known Limitations
 
 - **Context-only enforcement**: The PreToolUse hook outputs boundary context but cannot block edits. Enforcement relies on the LLM respecting the context. Tested with Opus-class models; behavior with less capable models is unknown.
-- **Matcher coverage**: PreToolUse matches `Write|Edit|NotebookEdit`. File writes via `Bash` (e.g. `echo > file`, `sed -i`) bypass the hook entirely.
+- **Matcher coverage**: PreToolUse matches `Write|Edit|NotebookEdit`. File writes via `Bash` (e.g. `echo > file`, `sed -i`) or via MCP file-write tools (`mcp__server__*`) bypass the hook entirely.
 - **Harness tool availability**: Skills declare `Glob`/`Grep` in `allowed-tools`, but some harnesses expose neither. `/wyx:audit` falls back to read-only shell discovery in that case (DEC-019); `/wyx:map` already lists `Bash`. `/wyx:pipeline` and `/wyx:sync` *Discovery* mode (no-arg) still depend on Glob and degrade to path-given modes there; `/wyx:concept` Discovery escapes via its `Agent` tool.
 - **Spec heading format**: Some projects use capitalized headings (`## Purpose`, `## Actions`); others use lowercase (`## purpose`, `## actions`). The drift context hook handles both via fallback extraction.
 - **PreToolUse context delivery**: Uses `hookSpecificOutput.additionalContext` (structured JSON) per the official hooks reference. Boundary declarations are delivered in full without truncation — completeness is prioritized over context savings.
@@ -148,7 +148,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Documentation
 
-- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-019). Check before making architectural changes.
+- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-021). Check before making architectural changes.
 
 ## Design Decisions
 

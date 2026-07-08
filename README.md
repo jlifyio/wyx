@@ -2,11 +2,11 @@
 
 [![Version](https://img.shields.io/badge/version-0.24.1-blue)](https://github.com/jlifyio/wyx/releases/tag/v0.24.1) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-orange)](https://claude.com/claude-code)
 
-**Architecture guardrails for Claude Code** — teach Claude your module boundaries. wyx automatically injects them into Claude's context on every write.
+**Architecture guardrails for Claude Code** — teach Claude your module boundaries. wyx automatically injects them into Claude's context whenever Claude edits files near a spec.
 
 ```mermaid
 graph LR
-    A["You write CONCEPT.md<br/>## interactions<br/>- NEVER access Orders repository"] -->|"wyx hook fires<br/>on every write"| B["Claude sees boundaries<br/>before writing code"]
+    A["You write CONCEPT.md<br/>## interactions<br/>- NEVER access Orders repository"] -->|"wyx hook fires<br/>on edits near the spec"| B["Claude sees boundaries<br/>before writing code"]
     B --> C["Claude uses getOrderTotal()<br/>via service API ✅"]
     B -.->|"without wyx"| D["Claude imports findOrder()<br/>from orders/repository ❌"]
 
@@ -24,7 +24,7 @@ graph LR
 + import { getOrderTotal } from "../orders/service"
 ```
 
-You write a short spec describing your module boundaries. wyx injects those boundaries into Claude's context before and after every write — Claude sees them before each edit and gets a dependency reminder after.
+You write a short spec describing your module boundaries. wyx injects those boundaries into Claude's context before and after every edit near the spec — Claude sees them before each edit and gets a dependency reminder after.
 
 **In testing (N=6 features, 2 projects):** 33 cross-module imports checked, 0 violations. Small sample — see [methodology](#test-results-and-methodology) for caveats. Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
 
@@ -116,21 +116,11 @@ Both rely on Claude choosing to comply. The difference is timing and targeting �
 <details>
 <summary><strong>Install from local directory</strong></summary>
 
-Add to your project's `.claude/settings.json`:
-
-```json
-{
-  "plugins": [
-    "/path/to/wyx"
-  ]
-}
-```
-
-Or test locally:
-
 ```bash
 claude --plugin-dir /path/to/wyx
 ```
+
+Loads the plugin for that session only — no install step. Repeat the flag to load several plugins at once.
 
 </details>
 
@@ -144,10 +134,10 @@ wyx artifacts: CONCEPT(2: src/lib/server/concepts/indicators/CONCEPT.md,
   src/lib/server/concepts/prediction/CONCEPT.md)
   PIPELINE(1: src/lib/server/concepts/sentiment/PIPELINE.md)
   SYNCS(1: src/lib/server/syncs/SYNCS.md)
-Last drift check: 2026-02-17T10:30:00Z (1 spec(s) with drift)
+Last drift check: 2026-02-17T10:30:00Z (1 spec(s) with drift — rerun to update)
 Specs modified since last drift check — consider running /wyx:concept drift
-Code modified since last drift: src/lib/server/concepts/indicators, src/lib/server/concepts/prediction
-Uncovered modules (>2 files, no spec): src/lib/components, src/lib/server/notifications
+Code modified since last drift: src/lib/server/concepts/indicators,src/lib/server/concepts/prediction
+Uncovered modules (>2 source files, no CONCEPT/PIPELINE/SYNCS): src/lib/components,src/lib/server/notifications
 ```
 
 Reports spec coverage, drift staleness, code changes since last drift, ARCHITECTURE.md freshness, and uncovered modules (directories with >2 source files but no CONCEPT.md or PIPELINE.md). Non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`, plus support dirs like `utils/`, `util/`, `helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`) are excluded. If no specs exist, it suggests running `/wyx:audit` to get started.
@@ -231,7 +221,7 @@ wyx warns at session start. Install from [jqlang.github.io](https://jqlang.githu
 No. wyx injects boundary context before and after each edit — Claude sees it and self-checks. It's advisory, not enforcement. In testing with Opus-class models, compliance was consistent.
 
 **Q: Does wyx catch writes via Bash (`echo > file`, `sed -i`)?**
-No. The hook matches Write, Edit, and NotebookEdit only. File modifications through Bash bypass the hook entirely.
+No. The hook matches Write, Edit, and NotebookEdit only. File modifications through Bash — or through MCP file-write tools (`mcp__server__*`) — bypass the hook entirely.
 
 **Q: Can I use wyx with other LLMs?**
 Currently tested with Claude only. The plugin mechanism is Claude Code-specific.
