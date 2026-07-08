@@ -2,10 +2,10 @@
 name: sync
 description: >
   This skill should be used when the user asks to "document sync patterns",
-  "map sync handlers", "create SYNCS.md", "audit sync coordination",
-  "wyx sync", "wyx", or wants to understand how concepts communicate
+  "map sync handlers", "create SYNCS.md", "review sync coordination",
+  "wyx sync", or wants to understand how concepts communicate
   through orchestrated workflows. Produces SYNCS.md coordination maps.
-argument-hint: "e.g. src/lib/server/syncs/ or Stock-to-Indicators pipeline"
+argument-hint: "e.g. src/lib/server/syncs/, Order fulfillment → Inventory update, or leave empty to discover"
 allowed-tools: Read, Glob, Grep, Write, Edit
 ---
 
@@ -26,7 +26,7 @@ Determine the mode from the argument:
 
 - **Path to sync directory** (e.g. `src/lib/server/syncs/`): **Retrofit mode** — read the existing sync handlers, map the coordination patterns, and propose a SYNCS.md. Flag any patterns that bypass concept boundaries.
 - **Sync description** (e.g. `Order fulfillment → Inventory update`): **Greenfield mode** — design a sync spec for the described coordination. Define trigger, flow, qualification, and error strategy.
-- **No arguments**: **Discovery mode** — analyze the project for sync-like patterns (event handlers, cross-concept calls, scheduled jobs, dispatch registrations) and list candidates. Do NOT generate full specs; ask the user which to elaborate.
+- **No arguments**: **Discovery mode** — analyze the project for sync-like patterns (event handlers, cross-concept calls, scheduled jobs, dispatch registrations) and list candidates. Do NOT generate full specs; ask the user which to elaborate. If discovery surfaces data transformation chains without cross-concept coordination, note that `/wyx:pipeline` covers those.
 
 ## SYNCS.md Format
 

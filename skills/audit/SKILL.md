@@ -21,7 +21,7 @@ candidate detection and dependency-ordered command sequences.
 use subagents. **Degraded mode** — some harnesses expose no Glob/Grep tools at all; when
 they are unavailable, fall back to **read-only** shell via Bash for discovery only
 (`find` / `ls` / `grep -r` to *list and read* files). Never use Bash to write, edit,
-move, or generate files — audit stays strictly read-only (DEC-001/011) on every
+move, or generate files — audit stays strictly read-only on every
 discovery path: it reports, it never produces artifacts.
 
 ## How to interpret $ARGUMENTS
@@ -52,10 +52,12 @@ How to count source files per directory using Glob:
 2. From the results, group files by their parent directory and count per directory
 3. Directories with more than 2 source files and no colocated spec are candidates
 
-Exclude directories matching: `tests/`, `test/`, `docs/`, `migrations/`, `node_modules/`,
-`.git/`, `dist/`, `build/`, `components/ui/`, `__pycache__/`, `.svelte-kit/`, `target/`,
-`.claude/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`, `utils/`, `util/`,
-`helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`.
+Exclude the same directories the SessionStart hook excludes: any hidden directory
+(dot-prefixed — `.git/`, `.svelte-kit/`, `.claude/`, `.next/`, `.venv/`, ...),
+`node_modules/`, `dist/`, `build/`, `vendor/`, `venv/`, `target/`, `__pycache__/`,
+and — at any depth — `tests/`, `test/`, `spec/`, `__tests__/`, `docs/`, `migrations/`,
+`components/ui/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`,
+`utils/`, `util/`, `helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`.
 
 Before flagging a directory, evaluate for behavioral cohesion — directories containing
 only type definitions, stateless utility functions, thin store wrappers, or schema

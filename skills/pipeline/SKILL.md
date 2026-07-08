@@ -2,9 +2,9 @@
 name: pipeline
 description: >
   This skill should be used when the user asks to "create a pipeline spec",
-  "document data transformations", "audit data flow", "specify pipeline
-  invariants", "wyx pipeline", "wyx", or wants to design, retrofit, or
-  discover data pipelines with quality invariants and boundary ownership.
+  "document data transformations", "document data flow", "specify pipeline
+  invariants", "wyx pipeline", or wants to design, retrofit, or discover
+  data pipelines with quality invariants and boundary ownership.
   Produces PIPELINE.md specs.
 argument-hint: "e.g. src/lib/syncs/, Sentiment scoring pipeline, or leave empty to discover"
 allowed-tools: Read, Glob, Grep, Write, Edit
@@ -22,7 +22,7 @@ Determine the mode from the argument:
 
 - **Path to directory/file** (e.g. `src/lib/server/syncs/`): **Retrofit mode** — read the existing data transformation code, identify the pipeline stages, and propose a PIPELINE.md spec. Flag any quality invariants that are assumed but not checked.
 - **Pipeline description** (e.g. `Sentiment scoring with recency weighting`): **Greenfield mode** — design a data pipeline spec from the description. Define sources, stages, outputs, and invariants.
-- **No arguments**: **Discovery mode** — analyze the project for data workflows (queries, aggregations, sync chains, batch operations) and list candidates for PIPELINE.md specs. Do NOT generate full specs; ask the user which to elaborate.
+- **No arguments**: **Discovery mode** — analyze the project for data workflows (queries, aggregations, sync chains, batch operations) and list candidates for PIPELINE.md specs. Do NOT generate full specs; ask the user which to elaborate. If discovery surfaces cross-concept coordination patterns (event handlers, scheduled jobs) rather than data transformations, note that `/wyx:sync` covers those.
 
 ## PIPELINE.md Format
 
@@ -90,7 +90,7 @@ quality: [invariant]
 When analyzing existing data transformation code:
 
 1. Identify the data flow: source → transforms → output
-2. Map DuckDB queries, aggregations, and joins to pipeline stages
+2. Map queries, aggregations, and joins to pipeline stages
 3. Identify implicit invariants (e.g., `WHERE amount >= 0` implies non-negative invariant)
 4. Check for cross-concept data access violations (direct `db` imports for foreign tables)
 5. Note which stages are in sync handlers vs. direct API routes
