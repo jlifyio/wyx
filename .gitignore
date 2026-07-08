@@ -16,3 +16,6 @@ docs/archive/
 *~
 .vscode/
 .idea/
+
+# Session state (remember plugin)
+.remember/

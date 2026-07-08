@@ -1,10 +1,21 @@
 {
   "name": "wyx",
-  "description": "Architecture guardrails for Claude Code — automatically injects module boundaries into Claude's context on every write",
+  "description": "Architecture guardrails for Claude Code — automatically injects declared module boundaries into Claude's context when it edits files near a spec",
   "version": "0.24.1",
   "author": {
     "name": "jlifyio"
   },
+  "homepage": "https://github.com/jlifyio/wyx",
   "repository": "https://github.com/jlifyio/wyx",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": [
+    "architecture",
+    "guardrails",
+    "module-boundaries",
+    "context-injection",
+    "hooks",
+    "concept-spec",
+    "drift-detection",
+    "claude-code"
+  ]
 }
