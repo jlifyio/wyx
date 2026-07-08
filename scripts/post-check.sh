@@ -70,10 +70,14 @@ extract_section() {
 # (older specs use `## Dependencies`, newer specs use `## dependencies`).
 extract_section_ci() {
   local file="$1" section="$2"
-  local result=""
+  local result="" cap=""
   result=$(extract_section "$file" "$section") || result=""
   if [ -z "$result" ]; then
-    result=$(extract_section "$file" "${section^}") || result=""
+    # tr-based capitalization instead of ${section^}: that expansion is bash 4+
+    # and macOS ships bash 3.2, where it errors and would silently disable
+    # this fallback for legacy capitalized-heading specs.
+    cap="$(printf '%s' "${section:0:1}" | tr '[:lower:]' '[:upper:]')${section:1}"
+    result=$(extract_section "$file" "$cap") || result=""
   fi
   printf '%s' "$result"
 }

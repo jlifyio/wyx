@@ -7,12 +7,25 @@ set -eu
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 PROJECT_DIR="${PROJECT_DIR%/}"
 
-# Common find exclusion patterns (shared across all find calls)
-FIND_EXCLUDES=(
-  -not -path '*/node_modules/*' -not -path '*/.git/*'
-  -not -path '*/dist/*' -not -path '*/build/*'
-  -not -path '*/.next/*' -not -path '*/vendor/*'
-  -not -path '*/.venv/*' -not -path '*/venv/*'
+# Hook input source (startup|resume|clear|compact) — used to gate the no-specs
+# hint below. TTY guard keeps manual `bash session-start.sh` runs from blocking
+# on stdin; empty/unparseable input degrades to "" which is treated as startup.
+hook_source=""
+if [ ! -t 0 ]; then
+  input=$(cat) || input=""
+  if [ -n "$input" ] && command -v jq &>/dev/null; then
+    hook_source=$(echo "$input" | jq -r '.source // empty' 2>/dev/null) || hook_source=""
+  fi
+fi
+
+# Directories pruned from all find calls. -prune stops descent entirely;
+# the previous -not -path form still walked every file inside node_modules/.git
+# on each session start, only to filter matches afterwards.
+PRUNE_DIRS=(
+  -name node_modules -o -name .git
+  -o -name dist -o -name build
+  -o -name .next -o -name vendor
+  -o -name .venv -o -name venv
 )
 
 # Warn if jq is missing (drift context hook depends on it)
@@ -20,10 +33,12 @@ if ! command -v jq &>/dev/null; then
   echo "wyx: jq not found — drift context (boundary checking) is disabled. Install jq for full protection."
 fi
 
-# Find wyx spec files, excluding common build/dependency directories
+# Find wyx spec files, excluding common build/dependency directories.
+# -mindepth 1 keeps the prune predicate off the start directory itself: without
+# it, a project whose own root basename matches a PRUNE_DIRS name (e.g. a
+# workspace literally named `build`) would prune the whole tree and emit nothing.
 find_specs() {
-  find "$PROJECT_DIR" -name "$1" \
-    "${FIND_EXCLUDES[@]}" \
+  find "$PROJECT_DIR" -mindepth 1 \( "${PRUNE_DIRS[@]}" \) -prune -o -name "$1" -print \
     2>/dev/null | sort || true
 }
 
@@ -41,9 +56,16 @@ sync_count=$(count_lines "$syncs")
 
 total=$((concept_count + pipeline_count + sync_count))
 
-# No artifacts found — suggest getting started
+# No artifacts found — suggest getting started, but only on real session
+# startup. The plugin is enabled globally (user scope) by default, so this
+# fires in every spec-less project; re-printing on resume/clear/compact is
+# pure noise. Empty/unparseable source (old CLI, missing jq) still shows it.
 if [ "$total" -eq 0 ]; then
-  echo "wyx: No specs found. Try /wyx:audit to discover modules that could benefit from specs."
+  case "$hook_source" in
+    ""|startup)
+      echo "wyx: No specs found. Try /wyx:audit to discover modules that could benefit from specs."
+      ;;
+  esac
   exit 0
 fi
 
@@ -126,19 +148,28 @@ if [ -f "$drift_history" ] && command -v jq &>/dev/null; then
     _ts_ref=$(mktemp 2>/dev/null) || _ts_ref=""
     if [ -n "$_ts_ref" ] && touch -d "$detect_ts" "$_ts_ref" 2>/dev/null; then
       # Warn if specs modified since last drift check
-      newer_than_drift=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
-        -newer "$_ts_ref" \
-        "${FIND_EXCLUDES[@]}" \
+      newer_than_drift=$(find "$PROJECT_DIR" -mindepth 1 \( "${PRUNE_DIRS[@]}" \) -prune -o \
+        \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
+        -newer "$_ts_ref" -print \
         2>/dev/null | head -1)
       if [ -n "$newer_than_drift" ]; then
         echo "Specs modified since last drift check — consider running /wyx:concept drift"
       fi
-      # Report code directories modified since last drift check
-      changed_dirs=$(find "$PROJECT_DIR" -type f \
+      # Report code directories modified since last drift check.
+      # dirname via sed (line-based) — `xargs -r dirname` word-splits find
+      # output, so paths containing spaces were reported as wrong fragments.
+      # -mindepth 1 keeps the '.*' prune off the start directory itself —
+      # without it a hidden project root (~/.dotfiles) prunes the whole tree.
+      # grep -vxF drops the bare PROJECT_DIR produced by files at the root
+      # (the prefix strip can't reduce it to a relative name).
+      # Prefix strip uses parameter expansion, NOT sed "s|^$PROJECT_DIR/||":
+      # a project path containing a sed metacharacter (| & \) would corrupt the
+      # s-command. Same principle as strip_prefix() above.
+      changed_dirs=$(find "$PROJECT_DIR" -mindepth 1 \( "${PRUNE_DIRS[@]}" -o -name '.*' \) -prune -o -type f \
         \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" -o -name "*.svelte" -o -name "*.vue" \) \
-        -newer "$_ts_ref" \
-        "${FIND_EXCLUDES[@]}" \
-        2>/dev/null | xargs -r dirname 2>/dev/null | sort -u | sed "s|^$PROJECT_DIR/||" | head -5)
+        -newer "$_ts_ref" -print \
+        2>/dev/null | sed 's|/[^/]*$||' | sort -u | grep -vxF -- "$PROJECT_DIR" \
+        | while IFS= read -r p; do printf '%s\n' "${p#"$PROJECT_DIR"/}"; done | head -5)
       rm -f "$_ts_ref" 2>/dev/null
       if [ -n "$changed_dirs" ]; then
         changed_list=$(echo "$changed_dirs" | tr '\n' ',' | sed 's/,$//')
@@ -152,9 +183,9 @@ fi
 
 # Check ARCHITECTURE.md freshness
 if [ -f "$PROJECT_DIR/ARCHITECTURE.md" ]; then
-  newer_specs=$(find "$PROJECT_DIR" \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
-    -newer "$PROJECT_DIR/ARCHITECTURE.md" \
-    "${FIND_EXCLUDES[@]}" \
+  newer_specs=$(find "$PROJECT_DIR" -mindepth 1 \( "${PRUNE_DIRS[@]}" \) -prune -o \
+    \( -name "CONCEPT.md" -o -name "PIPELINE.md" -o -name "SYNCS.md" \) \
+    -newer "$PROJECT_DIR/ARCHITECTURE.md" -print \
     2>/dev/null | head -1)
   if [ -n "$newer_specs" ]; then
     echo "Warning: ARCHITECTURE.md may be stale — specs modified since last /wyx:map run."
@@ -177,33 +208,38 @@ if [ "$concept_count" -gt 0 ]; then
     spec_dirs="$spec_dirs$(dirname "$spec_file")"$'\n'
   done <<< "$(printf '%s\n%s\n%s' "$concepts" "$pipelines" "$syncs")"
 
-  uncovered=$(find "$PROJECT_DIR" -type f \
+  uncovered=$(find "$PROJECT_DIR" -mindepth 1 \
+    \( "${PRUNE_DIRS[@]}" -o -name target -o -name __pycache__ -o -name '.*' \) -prune -o \
+    -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" \
        -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \
-       -o -name "*.svelte" -o -name "*.vue" -o -name "*.jl" \) \
-    "${FIND_EXCLUDES[@]}" \
-    -not -path '*/target/*' -not -path '*/__pycache__/*' \
-    -not -name '.*' -not -path '*/.*' \
+       -o -name "*.svelte" -o -name "*.vue" -o -name "*.jl" \) -print \
     2>/dev/null \
     | sed 's|/[^/]*$||' \
     | sort | uniq -c | sort -rn \
-    | awk -v threshold=2 '$1 > threshold { print $2 }' \
+    | awk -v threshold=2 '$1 > threshold' \
+    | sed 's/^[[:space:]]*[0-9][0-9]* //' \
     | while IFS= read -r d; do
         # Skip dirs that have a spec
         if [ -n "$spec_dirs" ] && grep -qxF -- "$d" <<<"$spec_dirs"; then
           continue
         fi
+        # Files directly at project root: the prefix strip below would leave
+        # the absolute path — loose root files are not a module, skip.
+        [ "$d" = "$PROJECT_DIR" ] && continue
         rel="${d#"$PROJECT_DIR"/}"
-        # Skip well-known non-concept directories
-        case "$rel" in
-          tests/*|test/*|spec/*|__tests__/*|docs/*|build/*) continue ;;
-          */migrations|*/migrations/*|migrations/*) continue ;;
-          */components/ui|*/components/ui/*) continue ;;
-          */types|types/*|*/e2e|e2e/*|*/cypress|cypress/*) continue ;;
-          */fixtures|fixtures/*|*/stubs|stubs/*|*/mocks|mocks/*) continue ;;
-          */utils|utils/*|*/util|util/*|*/helpers|helpers/*) continue ;;
-          */scripts|scripts/*|*/schema|schema/*|*/schemas|schemas/*) continue ;;
-          */constants|constants/*|*/config|config/*) continue ;;
+        # Skip well-known non-concept directories. Matched against "/$rel/"
+        # so each name is excluded at ANY depth including top level — bare
+        # top-level dirs (rel="tests") previously slipped through `tests/*`.
+        case "/$rel/" in
+          */tests/*|*/test/*|*/spec/*|*/__tests__/*|*/docs/*|*/build/*) continue ;;
+          */migrations/*) continue ;;
+          */components/ui/*) continue ;;
+          */types/*|*/e2e/*|*/cypress/*) continue ;;
+          */fixtures/*|*/stubs/*|*/mocks/*) continue ;;
+          */utils/*|*/util/*|*/helpers/*) continue ;;
+          */scripts/*|*/schema/*|*/schemas/*) continue ;;
+          */constants/*|*/config/*) continue ;;
         esac
         printf '%s\n' "$rel"
       done \
