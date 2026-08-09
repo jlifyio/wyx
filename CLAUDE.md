@@ -62,6 +62,33 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 - Specs are documentation, not enforcement — drift detection catches divergence
 - All three hooks are `type: "command"` only (no prompt or agent hooks)
 
+### Agent dispatch: always pin the model
+
+Every `Agent` dispatch in this plugin MUST pass an explicit `model:`. wyx dispatches
+only the **built-in `Explore` agent**, which carries no frontmatter of its own, so an
+unpinned dispatch **inherits the session model** — spawning N agents on whatever tier
+the user happens to be running (e.g. Claude Fable 5). Pin it at the call site; the
+callee cannot.
+
+**Enforced**, not remembered: `scripts/check-rules.sh` fails when a `subagent_type`
+line under `skills/` has no `model:` in its section, wired as `gates.rules`. Add the
+check in the same change that adds a rule. This section is the single source — skill
+references carry the pin and a one-line why, nothing more.
+
+Choose the tier by **which way a wrong answer fails**, not by how hard it feels:
+
+| Fan-out | Tier | Failure direction |
+|---|---|---|
+| `/wyx:map` spec reading | `sonnet` | Extracts *declared* sections — a wrong extraction is visible in the graph |
+| `/wyx:concept drift` scanning | `opus` | Emits **absence claims** (`✓ clean`) — a wrong verdict produces no output |
+
+Two corollaries, both easy to get backwards. **A silent failure mode cannot be "start
+cheap, promote on a demonstrated miss"** — that needs the miss to be observable, and an
+under-report never generates its own evidence. And **do not re-derive the tier from
+"does the agent assign severity"**: `drift-detection.md` fixes severity in its tables
+and forbids escalation, making the task read mechanical when the judgment actually sits
+in category selection.
+
 ## Working in This Repository
 
 This is a plugin repository. There is no build step, test suite, or package.json.
@@ -83,7 +110,9 @@ This is a plugin repository. There is no build step, test suite, or package.json
 
 ## Testing
 
-No traditional test suite. Test by running skills against real projects.
+No traditional test suite — behaviour is tested by running skills against real
+projects. The one automated gate is `bash scripts/check-rules.sh` (structural rule
+checks + `bash -n` over every shell script); run it before every release.
 
 ```bash
 # Test a single skill (non-interactive)
