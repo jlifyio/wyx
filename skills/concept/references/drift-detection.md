@@ -13,9 +13,16 @@ When `$ARGUMENTS` starts with `drift`, scan for spec-code divergence.
 
 ## Parallel scanning
 
-When 5+ specs are found, use `Agent` with `subagent_type: "Explore"` to scan specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable) — safe for drift analysis. (The threshold is lower than `/wyx:map`'s 10+ because drift agents read both spec AND implementation per task; the heavier per-task work amortizes agent-spawn overhead at lower N.)
+When 5+ specs are found, use `Agent` with `subagent_type: "Explore"` and **`model: 'opus'`** to scan specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable) — safe for drift analysis. (The threshold is lower than `/wyx:map`'s 10+ because drift agents read both spec AND implementation per task; the heavier per-task work amortizes agent-spawn overhead at lower N.)
 
-- Spawn one Explore agent per spec (or group of 2-3 nearby specs)
+**`opus`, deliberately higher than `/wyx:map`'s `sonnet`** — because these agents
+emit *absence* claims (`Missing action: ✓ clean`), where a wrong verdict produces no
+output to notice. The rule, the tier table and the full reasoning live in `CLAUDE.md`
+→ "Agent dispatch: always pin the model"; `scripts/check-rules.sh` enforces the pin.
+Do not restate the rationale here — an earlier draft did, and the two copies ended up
+pointing at each other as the canonical source.
+
+- Spawn one Explore agent per **2-3 nearby specs**; drop to one-per-spec only when a single spec's implementation is large enough that grouping would blow the agent's context. Grouping is the cost control that makes the `opus` pin affordable — at one-agent-per-spec a 20-spec project spawns 20.
 - Each agent reads the spec + implementation code and returns findings in the drift report format (category, severity, file:line, description)
 - After all agents complete, merge findings into a single drift report, then run cross-spec validation and systemic pattern aggregation in the main context
 
