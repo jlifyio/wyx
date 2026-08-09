@@ -1,7 +1,7 @@
 {
   "name": "wyx",
   "description": "Architecture guardrails for Claude Code — automatically injects declared module boundaries into Claude's context when it edits files near a spec",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "author": {
     "name": "jlifyio"
   },
