@@ -1,0 +1,5 @@
+{
+  "gates": {
+    "rules": "bash scripts/check-rules.sh"
+  }
+}
