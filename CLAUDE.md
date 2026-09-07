@@ -49,7 +49,7 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 
 **SessionStart** (command): Scans project for existing wyx artifacts (CONCEPT.md, PIPELINE.md, SYNCS.md) and reports coverage in sorted order. Warns if `jq` is missing. Suggests `/wyx:audit` if none found — but **only when the hook `source` is `startup`** (or empty/unparseable, the safe degrade); on `resume`/`clear`/`compact` the no-specs hint stays silent so a globally-enabled wyx does not nag in every spec-less project (DEC-021). Also reports last drift check date from `.claude/wyx-drift-history.jsonl` (if exists), warns if specs modified since last drift check (`find -newer`), checks ARCHITECTURE.md freshness, lists uncovered modules (directories with >2 source files lacking CONCEPT.md, PIPELINE.md, or SYNCS.md), and reports code directories modified since last drift check. Non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`, `utils/`, `util/`, `helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`) are excluded at any path depth (matched against `"/$rel/"`, so a bare top-level `tests` is excluded too), and build/dependency/hidden directories are pruned during the walk (`find … -prune`, not post-walk `-not -path` filtering — ≈3× faster on large trees; the `-name '.*'` prune carries `-mindepth 1` so a hidden project root like `~/.dotfiles` is not pruned as a whole). Shadowing detection flags PIPELINE.md-only directories (not SYNCS.md — SYNCS.md does not stop hook traversal).
 
-**PreToolUse** (command, matcher: `Write|Edit|NotebookEdit`): When writing near a spec file, outputs boundary declarations via `hookSpecificOutput.additionalContext`. Extracts `## purpose` from all co-located specs (CONCEPT/PIPELINE/SYNCS) for the spec listing, plus boundary declarations: `## interactions` and `## dependencies` from CONCEPT.md, and `## data boundary` from PIPELINE.md. SYNCS.md is listed in spec context but does not stop traversal or inject boundaries. Resolves relative file paths to absolute. Handles both `file_path` (Write/Edit) and `notebook_path` (NotebookEdit) via jq fallback chain. Skips inert files (`.json`, `.jsonl`, `.lock`, `.log`, `.txt`) — no context injection for non-code files. Handles CRLF line endings via `tr -d '\r'` in extract_section. When no CONCEPT.md is co-located with the stopping spec (e.g., PIPELINE.md-only directory), looks for an ancestor CONCEPT.md and injects its boundaries with a `[SHADOWED]` caveat. Enables LLM self-checking against declared boundaries. **This is the core differentiator of wyx** — concept specs are the fuel, this hook is the engine.
+**PreToolUse** (command, matcher: `Write|Edit|NotebookEdit`): When writing near a spec file, outputs boundary declarations via `hookSpecificOutput.additionalContext`. Extracts `## purpose` from all co-located specs (CONCEPT/PIPELINE/SYNCS) for the spec listing, plus boundary declarations: `## interactions` and `## dependencies` from CONCEPT.md, and `## data boundary` from PIPELINE.md. (Traversal rule: Key Constraints.) Resolves relative file paths to absolute. Handles both `file_path` (Write/Edit) and `notebook_path` (NotebookEdit) via jq fallback chain. Skips inert files (`.json`, `.jsonl`, `.lock`, `.log`, `.txt`) — no context injection for non-code files. Handles CRLF line endings via `tr -d '\r'` in extract_section. Enables LLM self-checking against declared boundaries. **This is the core differentiator of wyx** — concept specs are the fuel, this hook is the engine.
 
 **PostToolUse** (command, matcher: `Write|Edit|NotebookEdit`): After a file edit near a CONCEPT.md, reinjects the `## dependencies` list as a focused reminder. Complements PreToolUse: PreToolUse provides full boundary context before the edit (guidance), PostToolUse provides the dependency list after (verification prompt). Walks upward to find the nearest CONCEPT.md only (not PIPELINE.md or SYNCS.md — they lack dependency lists). Silent when: no spec found, no `## dependencies` section, editing inert files, or editing spec files themselves. Language-agnostic, no import parsing. Design principle: **hooks extract and inject; the LLM judges**.
 
@@ -134,8 +134,8 @@ echo '{"tool_name":"Write","tool_input":{"file_path":"/path/to/project/src/modul
   | CLAUDE_PROJECT_DIR=/path/to/project bash scripts/post-check.sh
 
 # Validate plugin structure
-python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))" && echo "plugin.json OK"
-python3 -c "import json; json.load(open('hooks/hooks.json'))" && echo "hooks.json OK"
+claude plugin validate .   # plugin.json + hooks.json + 5 skills (passes; the CLAUDE.md-not-loaded warning is expected)
+# No-CLI fallback: skill presence only
 for s in audit concept map pipeline sync; do test -f skills/$s/SKILL.md && echo "$s OK"; done
 ```
 
@@ -153,7 +153,7 @@ for s in audit concept map pipeline sync; do test -f skills/$s/SKILL.md && echo 
 sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 ```
 
-**Upward directory traversal**: `drift-context.sh` walks up from the edited file's directory, stops at project root via `case "$dir/" in "$PROJECT_DIR/"*) ;; *) break ;; esac`. Stops at the first directory containing a boundary-contributing spec (CONCEPT.md or PIPELINE.md). SYNCS.md does not stop traversal.
+**Upward directory traversal**: `drift-context.sh` walks up from the edited file's directory, stops at project root via `case "$dir/" in "$PROJECT_DIR/"*) ;; *) break ;; esac` (which spec stops the walk: Key Constraints).
 
 **Relative path resolution**: Files from tool input may be relative — resolve with `case "$file_path" in /*) ;; *) file_path="$PROJECT_DIR/$file_path" ;; esac`.
 
@@ -163,7 +163,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 **JSONL reading**: Use `grep -v '^[[:space:]]*$' file | tail -1` instead of `tail -1` — Claude's Write tool may append trailing empty lines.
 
-**`set -eu` + command substitution**: `var=$(cmd | jq ...)` aborts the script when jq exits non-zero, even without `pipefail`. Use `var=$(...) || var="fallback"` on every command-sub that can fail — this covers jq parses (see `drift-context.sh:15`, `session-start.sh:79-90`), stdin reads (`input=$(cat) || input=""`), and the load-bearing final emit (`jq -n ... || true`). A single unguarded line can silently kill a hook after partial output.
+**`set -eu` + command substitution**: `var=$(cmd | jq ...)` aborts the script when jq exits non-zero, even without `pipefail`. Use `var=$(...) || var="fallback"` on every command-sub that can fail — this covers jq parses (the `hook_source` parse at the top of `session-start.sh`; `grep -n '|| ' scripts/*.sh` lists every guard), stdin reads (`input=$(cat) || input=""` at the top of `drift-context.sh` and `post-check.sh`), and the load-bearing final emit (`jq -n ... || true`). A single unguarded line can silently kill a hook after partial output.
 
 ## Known Limitations
 
@@ -196,4 +196,4 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Test Results
 
-Boundary violations: 33% → 0% (N=6 features, 2 projects). Drift and coverage additionally validated on a third project (WineLevel3, 10 concepts). Before/after methodology — developer learning from spec-writing may confound. Redundant data store anti-pattern found in 3/3 audited projects — addressed by Design Rule 5 and Retrofit step 4 in v0.16.3.
+README §Test results and methodology (N=6, 2 projects, p = 0.21, confounds listed there). Do not restate numbers here. Not in the README: drift and coverage were additionally validated on a third project (WineLevel3, 10 concepts), and the redundant data store anti-pattern was found in 3/3 audited projects — addressed by Design Rule 5 and Retrofit step 4 in v0.16.3.
