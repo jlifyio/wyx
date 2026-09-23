@@ -142,8 +142,8 @@ echo '{"tool_name":"Write","tool_input":{"file_path":"/path/to/project/src/modul
   | CLAUDE_PROJECT_DIR=/path/to/project bash scripts/post-check.sh
 
 # Validate plugin structure
-claude plugin validate .   # plugin.json + hooks.json + 5 skills (passes; the CLAUDE.md-not-loaded warning is expected)
-# No-CLI fallback: skill presence only
+claude plugin validate .   # plugin.json + hooks.json + each present SKILL.md (passes; the CLAUDE.md-not-loaded warning is expected)
+# Skill presence: validate passes with a skill directory missing, so always run this too
 for s in audit concept map pipeline sync; do test -f skills/$s/SKILL.md && echo "$s OK"; done
 ```
 
@@ -204,4 +204,4 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Test Results
 
-README §Test results and methodology (N=6, 2 projects, p = 0.21, confounds listed there). Do not restate numbers here. Not in the README: drift and coverage were additionally validated on a third project (WineLevel3, 10 concepts), and the redundant data store anti-pattern was found in 3/3 audited projects — addressed by Design Rule 5 and Retrofit step 4 in v0.16.3.
+README §Test results and methodology holds the sample, significance and confounds. Do not restate its numbers here. Not in the README: drift and coverage were additionally validated on a third project (WineLevel3, 10 concepts), and the redundant data store anti-pattern was found in 3/3 audited projects — addressed by Design Rule 5 and Retrofit step 4 in v0.16.3.
