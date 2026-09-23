@@ -16,6 +16,10 @@ cd "$PLUGIN_ROOT"
 
 fail=0
 
+# === tripwires ===
+# Insertion anchors for workflow-kit `tripwire apply`: every rule block goes
+# between this line and the end marker, before the verdict below.
+
 # --- Rule: every Agent dispatch pins the model ------------------------------
 #
 # CLAUDE.md -> "Agent dispatch: always pin the model": every dispatch passes an
@@ -111,6 +115,40 @@ if [ "$nbad" -eq 0 ]; then
 else
     printf '  %d of %d shell script(s) FAILED to parse.\n' "$nbad" "$nscripts"
 fi
+
+# --- Rule: CLAUDE.md does not restate the README's test results --------------
+#
+# CLAUDE.md -> "Test Results": "Do not restate its numbers here." The README owns
+# the figures; a copy in CLAUDE.md goes stale the moment the README is
+# re-measured. Matches the result forms the README uses (rates, x/6 and "x of y"
+# counts, import/violation counts, N= and p =). Figures that are not in the
+# README (3/3 audited projects, 10 concepts) stay allowed. Residual (accepted):
+# ratios over another denominator (8/8) and figures reworded into prose
+# ("four test gaps") pass.
+printf -- '--- CLAUDE.md test results not restated ---\n'
+results=$(awk '/^## Test Results[[:space:]]*$/ {on=1; next} /^## / {on=0} on {print "CLAUDE.md:" NR ": " $0}' CLAUDE.md)
+if [ -z "$results" ]; then
+    echo "  MISSING SCAN ROOT: CLAUDE.md '## Test Results' — an eroded scope reports clean."
+    fail=$((fail + 1))
+else
+    rc=0
+    restated=$(printf '%s\n' "$results" | /usr/bin/grep -a -E \
+        '[0-9] ?%|[0-9]+ ?/ ?6([^0-9]|$)|[0-9]+ of [0-9]+|[0-9]+ ([A-Za-z-]+ )?(imports?|violations?)|N ?= ?[0-9]|p ?= ?0?\.[0-9]') || rc=$?
+    case $rc in
+        0)
+            printf '  RESTATED: CLAUDE.md "## Test Results" repeats README figures:\n'
+            printf '%s\n' "$restated" | sed 's/^/    /'
+            printf '  Fix: point to README §Test results and methodology instead.\n'
+            fail=$((fail + 1)) ;;
+        1)
+            printf '  OK: Test Results points to the README without restating figures.\n' ;;
+        *)
+            printf '  SCAN ERROR: grep exited %d on the Test Results section.\n' "$rc"
+            fail=$((fail + 1)) ;;
+    esac
+fi
+
+# ─── end tripwires ───
 
 if [ "$fail" -gt 0 ]; then
     printf '\n%d rule violation(s) found.\n' "$fail"
