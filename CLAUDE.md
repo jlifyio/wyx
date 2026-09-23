@@ -64,30 +64,38 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 
 ### Agent dispatch: always pin the model
 
-Every `Agent` dispatch in this plugin MUST pass an explicit `model:`. wyx dispatches
-only the **built-in `Explore` agent**, which carries no frontmatter of its own, so an
-unpinned dispatch **inherits the session model** — spawning N agents on whatever tier
-the user happens to be running (e.g. Claude Fable 5). Pin it at the call site; the
-callee cannot.
+Every `Agent` dispatch in this plugin MUST pass an explicit `model:` naming `opus`,
+`sonnet` or `haiku` — `opus` for judgment, `sonnet` or `haiku` only for read-only
+lookup. wyx dispatches only the **built-in `Explore` agent**, which carries no
+frontmatter of its own, so an unpinned dispatch **inherits the session model**. Pin it
+at the call site; the callee cannot.
+
+This applies the owner's agent policy: agents that write code or make a judgment run on
+Opus, effort by role (implementers `high`, reviewers/verifiers `xhigh`); Haiku/Sonnet
+only for read-only lookup/search. Why: Opus 5.5 leads Fable 5.1 on published benchmarks
+at 40% of its price ($4/$20 vs $10/$50 per Mtok), so no role is worth a pricier tier.
+Effort is out of wyx's reach — the Agent tool has no effort parameter and effort comes
+from agent frontmatter, which `Explore` does not have — so the call-site pin is the
+model only.
 
 **Enforced**, not remembered: `scripts/check-rules.sh` fails when a `subagent_type`
-line under `skills/` has no `model:` in its section, wired as `gates.rules`. Add the
-check in the same change that adds a rule. This section is the single source — skill
-references carry the pin and a one-line why, nothing more.
+line under `skills/` has no `model:` naming `opus`, `sonnet` or `haiku` in its section,
+wired as `gates.rules`. Add the check in the same change that adds a rule. This section
+is the single source — skill references carry the pin and a one-line why, nothing more.
 
-Choose the tier by **which way a wrong answer fails**, not by how hard it feels:
+Tell judgment from lookup by **which way a wrong answer fails**, not by how hard it feels:
 
-| Fan-out | Tier | Failure direction |
+| Fan-out | Model | Role — failure direction |
 |---|---|---|
-| `/wyx:map` spec reading | `sonnet` | Extracts *declared* sections — a wrong extraction is visible in the graph |
-| `/wyx:concept drift` scanning | `opus` | Emits **absence claims** (`✓ clean`) — a wrong verdict produces no output |
+| `/wyx:map` spec reading | `sonnet` | Lookup — extracts *declared* sections; a wrong extraction is visible in the graph |
+| `/wyx:concept drift` scanning | `opus` | Judgment — emits **absence claims** (`✓ clean`); a wrong verdict produces no output |
 
 Two corollaries, both easy to get backwards. **A silent failure mode cannot be "start
 cheap, promote on a demonstrated miss"** — that needs the miss to be observable, and an
 under-report never generates its own evidence. And **do not re-derive the tier from
-"does the agent assign severity"**: `drift-detection.md` fixes severity in its tables
-and forbids escalation, making the task read mechanical when the judgment actually sits
-in category selection.
+"does the agent assign severity"** (nor from its read-only tools): `drift-detection.md`
+fixes severity in its tables and forbids escalation, making the task read mechanical
+when the judgment actually sits in category selection.
 
 ## Working in This Repository
 
