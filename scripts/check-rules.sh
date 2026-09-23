@@ -18,10 +18,12 @@ fail=0
 
 # --- Rule: every Agent dispatch pins the model ------------------------------
 #
-# CLAUDE.md -> "Agent dispatch: always pin the model". wyx dispatches only the
-# built-in `Explore` agent, which has no frontmatter of its own, so an unpinned
-# dispatch inherits the session model and spawns N agents on whatever tier the
-# user is running. The callee cannot fix this; only the call site can.
+# CLAUDE.md -> "Agent dispatch: always pin the model": every dispatch passes an
+# explicit `model:` naming opus, sonnet or haiku — opus for judgment, sonnet or
+# haiku only for read-only lookup. wyx dispatches only the built-in `Explore`
+# agent, which has no frontmatter of its own, so an unpinned dispatch inherits
+# the session model. The callee cannot fix this; only the call site can.
+# Quoting is not part of the rule: 'opus', "opus" and bare opus all pass.
 #
 # Scope note: `docs/archive/**` is excluded — it holds superseded plans that
 # describe historical dispatches and must not be retro-fixed.
@@ -60,8 +62,8 @@ while IFS= read -r f; do
         # and one not, passes on the pinned one.
         lo=$(awk -v n="$n" 'NR<=n && /^#{1,6} / {l=NR} END {print (l ? l : 1)}' "$f")
         hi=$(awk -v n="$n" 'NR>n && /^#{1,6} / {print NR-1; found=1; exit} END {if (!found) print NR}' "$f")
-        if ! sed -n "${lo},${hi}p" "$f" | grep -qE "model: *'?(opus|sonnet|haiku)"; then
-            printf '  UNPINNED: %s:%s — Agent dispatch with no model: in its paragraph\n' "$f" "$n"
+        if ! sed -n "${lo},${hi}p" "$f" | grep -qE "model: *['\"]?(opus|sonnet|haiku)"; then
+            printf '  UNPINNED: %s:%s — Agent dispatch with no model: naming opus, sonnet or haiku in its section\n' "$f" "$n"
             unpinned=$((unpinned + 1))
         fi
     done < <(grep -n 'subagent_type' "$f" 2>/dev/null | cut -d: -f1 || true)
@@ -73,8 +75,8 @@ if [ "$dispatch_hits" -eq 0 ]; then
     fail=$((fail + 1))
 elif [ "$unpinned" -gt 0 ]; then
     printf '  %d of %d dispatch(es) unpinned.\n' "$unpinned" "$dispatch_hits"
-    printf '  Fix: pass model: on the Agent call. Tier by failure direction —\n'
-    printf '       visible-error fan-out (map) = sonnet, absence-claim fan-out (drift) = opus.\n'
+    printf '  Fix: pass model: on the Agent call — opus for judgment, sonnet or haiku\n'
+    printf '       only for read-only lookup (map = sonnet, drift = opus).\n'
     printf '       See CLAUDE.md -> "Agent dispatch: always pin the model".\n'
     fail=$((fail + 1))
 else
