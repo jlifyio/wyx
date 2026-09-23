@@ -44,7 +44,22 @@ unpinned=0
 # number comes back as a path fragment and the arithmetic below dies with an
 # unbound-variable error pointing at nothing useful. Splitting the loops removes
 # the ambiguity rather than trying to parse around it.
+#
+# Read with `/usr/bin/grep -a` and keep grep's status. Without -a, a NUL or an
+# invalid byte on the dispatch line makes grep print "binary file matches"
+# instead of the line number, exit 0, and the dispatch silently drops out of
+# the count. Exit 1 is "no dispatch in this file"; 2+ means it was not scanned.
+skill_files=$(find skills -type f -name '*.md' ! -path '*/archive/*' | sort)
 while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    rc=0
+    hits=$(/usr/bin/grep -a -n 'subagent_type' "$f" | cut -d: -f1) || rc=$?
+    if [ "$rc" -gt 1 ]; then
+        printf '  SCAN ERROR: %s — grep exited %d, so its dispatches were not checked.\n' "$f" "$rc"
+        fail=$((fail + 1))
+        continue
+    fi
+    [ -n "$hits" ] || continue
     while IFS= read -r n; do
         dispatch_hits=$((dispatch_hits + 1))
         # Search the enclosing markdown SECTION (heading to heading), not a fixed
@@ -62,12 +77,12 @@ while IFS= read -r f; do
         # and one not, passes on the pinned one.
         lo=$(awk -v n="$n" 'NR<=n && /^#{1,6} / {l=NR} END {print (l ? l : 1)}' "$f")
         hi=$(awk -v n="$n" 'NR>n && /^#{1,6} / {print NR-1; found=1; exit} END {if (!found) print NR}' "$f")
-        if ! sed -n "${lo},${hi}p" "$f" | grep -qE "model: *['\"]?(opus|sonnet|haiku)"; then
+        if ! sed -n "${lo},${hi}p" "$f" | /usr/bin/grep -a -qE "model: *['\"]?(opus|sonnet|haiku)"; then
             printf '  UNPINNED: %s:%s — Agent dispatch with no model: naming opus, sonnet or haiku in its section\n' "$f" "$n"
             unpinned=$((unpinned + 1))
         fi
-    done < <(grep -n 'subagent_type' "$f" 2>/dev/null | cut -d: -f1 || true)
-done < <(find skills -type f -name '*.md' ! -path '*/archive/*' 2>/dev/null | sort)
+    done <<< "$hits"
+done <<< "$skill_files"
 
 if [ "$dispatch_hits" -eq 0 ]; then
     # Not a pass. wyx has dispatches; zero hits means the grep or the scope broke.
