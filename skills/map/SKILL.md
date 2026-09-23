@@ -46,7 +46,7 @@ Before reading all specs, check if regeneration is needed:
 
 ### Parallel reading
 
-When 10+ specs are found, use `Agent` with `subagent_type: "Explore"` and `model: 'sonnet'` to read specs in parallel. Pin the model on the dispatch (read-only spec reading is mechanical fan-out) so the parallel reads stay cheap and never inherit the session model — keeping them off the most expensive tier (e.g. Claude Fable 5) even when the session runs on it. Below 10, direct Read is faster (agent spawning overhead exceeds read time). Explore agents are read-only (Write/Edit structurally unavailable).
+When 10+ specs are found, use `Agent` with `subagent_type: "Explore"` and `model: 'sonnet'` to read specs in parallel. Pin the model on the dispatch: spec reading is read-only lookup, the one role that may run below Opus, and an unpinned dispatch would inherit the session model. Below 10, direct Read is faster (agent spawning overhead exceeds read time). Explore agents are read-only (Write/Edit structurally unavailable).
 
 - Spawn one Explore agent per 3-5 specs grouped by directory proximity
 - Each agent reads the specs and returns: type, name, directory, and key sections (interactions, dependencies, data boundary, coordination graph)
