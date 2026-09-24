@@ -212,7 +212,7 @@ Add a 2-line documentation note to drift-detection.md explaining that drift dete
 ## DEC-010: Hook Architecture Frozen — No Expansion Beyond PreToolUse Context Injection
 
 **Date:** 2026-03-21 (consolidation of decisions from v0.17 through v0.21)
-**Status:** Partially superseded by DEC-014
+**Status:** Partially superseded by DEC-014; re-examined in DEC-023 (unchanged)
 **Source:** MEMORY.md debate records: v0.17 Improvement (2026-03-10), v0.20.0 Field Feedback (2026-03-21), v0.21 Field Feedback (2026-03-21)
 
 ### Context
@@ -588,3 +588,41 @@ Documentation only:
 - The numbers are unchanged. The caveat now names the two gaps the before/after design leaves, and the protocol offers a way to replace the figures rather than defend them.
 - `docs/blog-draft.md` and `docs/launch-posts.md` still carry the old attributions and the "down from 33%" framing next to a description of both hooks. They are launch drafts and are left as-is; fix them before any reuse.
 
+---
+
+## DEC-023: Re-examining DEC-010 After the External Review — Defer Bash-Write Coverage, Reject Checker Pass-Through and Strict Mode
+
+**Date:** 2026-09-24
+**Status:** Accepted
+**Source:** External review of v0.26.1 (P3a, P3b, P4), verified against the Claude Code hooks reference and guide (code.claude.com/docs/en/hooks, /hooks-guide, /settings-reference; fetched 2026-09-24, CLI 2.1.281)
+
+### Context
+DEC-010 froze hook expansion absent (1) a new Claude Code platform capability or (2) a fundamental architecture change. The review asked for three re-examinations:
+- **(a)** Bash and MCP writes bypass the `Write|Edit|NotebookEdit` matchers (README FAQ). The hooks guide offers a Stop hook that scans the working tree once per turn, or matching `Bash|PowerShell` and listing modified files with `git status --porcelain`.
+- **(b)** DEC-010 rejected static import checking because PreToolUse reads the pre-write disk. That reason does not apply to PostToolUse (DEC-014). The review proposes that a project configure its own deterministic checker and that wyx inject the checker's output.
+- **(c)** A strict mode requiring an empty `## dependencies`, routing all coordination between concepts through syncs, as WYSIWID does.
+
+### Decision
+- **(a) Defer.** No hook change now. The Stop-scan and `git status` routes are rejected. If the trigger below fires, the `bashEditDiff` route is the designated path.
+- **(b) Reject** the wyx-side pass-through; add one README FAQ sentence pointing to a checker run as the project's own PostToolUse hook.
+- **(c) Reject** strict mode.
+
+### Alternatives Considered
+**(a) Bash/MCP write coverage**
+- **Stop hook scanning the tree**: Rejected. A Stop hook reaches Claude only by continuing the conversation — `decision: "block"` or `additionalContext`, both under `stop_hook_active` and the 8-consecutive-continuation cap. wyx would change from injecting context to forcing an extra model turn whenever a spec'd directory is dirty, and a dirty tree re-fires every turn until commit.
+- **`Bash|PowerShell` + `git status --porcelain`**: Rejected. `git status` lists every dirty file, not what this command changed. Without per-session snapshot state (the writable state DEC-021 declined), every Bash call — `ls`, a test run — re-injects boundaries for every dirty spec'd file, and git runs on every Bash call.
+- **FileChanged**: Not viable. Its matcher registers literal filenames in the working directory (no glob, no recursion), and its output never reaches Claude — only `watchPaths` and a terminal `systemMessage` are read.
+- **PostToolUse on `Bash` reading `tool_response.bashEditDiff.changedFiles`** (not in the review; CLI v2.1.269+): the one route that fits "hooks extract and inject; the LLM judges" — a per-command delta, no git call, no state, no loop — and the first capability that meets DEC-010's condition (1). Deferred for four reasons. It is public beta and "the field shape may change", so a hook keyed to it inherits DEC-012's hook-script sync risk. It is recorded by default only in auto and `bypassPermissions` modes; elsewhere it needs `bashEditDiffEnabled`, a user- or managed-scope setting that neither a plugin nor a project can set. Git-ignored files and MCP writes stay uncovered. And there is no field report of a boundary violation introduced through Bash, while `/wyx:concept drift` already catches such violations whatever the write path, because it reads code, not tool history.
+- **Reopen when** a drift finding is traced to a Bash- or MCP-written file in 2+ projects, or `bashEditDiff` leaves public beta. Constraints committed for that change: silent when the field is absent; reuse post-check.sh's per-file spec lookup; one reminder per spec, not per file; skip inert and spec files; no git calls; no state.
+
+**(b) Checker pass-through**
+- The review is right that DEC-010's stale-disk reason does not apply, and delegating to the project's checker sidesteps DEC-014's concept-to-import-path mapping and language-specific objections. The pass-through still fails on three counts. Claude Code already lets a project register its checker as its own PostToolUse hook, with `additionalContext` or `decision: "block"` feedback, so a wyx wrapper would add only a config key — the kind of config surface DEC-019 rejected (`.wyxignore`). Checker rules and `## dependencies` would become two sources of truth that drift silently. And it is feature depth under DEC-013.
+
+**(c) Strict mode**
+- A mode is a flag for an unrequested need (DEC-013), and the format already permits the strict style: `## dependencies` is optional and SYNCS.md exists. What a mode would add is drift calibration that flags every direct call to another concept's actions. That reverses DEC-015's "Sanctioned coupling" line, added after drift agents flagged public-action calls as Critical 4+ times; on existing code it would make most cross-module calls Critical, and noisy output gets ignored. It would also silence PostToolUse, which only reinjects `## dependencies`. And wyx cannot enforce it (DEC-007): structural independence belongs to a concept runtime such as the one in Meng et al. 2026, not to a context-injection plugin.
+- **Reopen when** a field project asks for WYSIWID-strict calibration and DEC-013's revisit triggers are met (N=10 projects, 2+ developers).
+
+### Consequences
+- No hook, script or spec-format change. DEC-010, DEC-013 and DEC-014 stand; DEC-010's status line points here.
+- DEC-010's condition (1) is met for the first time, by `bashEditDiff`. The deferral rests on DEC-013's evidence bar and the field's beta status, not on a platform limit; the trigger and constraints above make the next decision mechanical.
+- The FAQ directs users who need mechanical enforcement to their own PostToolUse checker, which runs beside wyx instead of being wrapped by it.

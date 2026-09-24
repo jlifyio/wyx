@@ -218,7 +218,7 @@ CLAUDE_PROJECT_DIR=/path/to/project bash scripts/session-start.sh
 wyx warns at session start. Install from [jqlang.github.io](https://jqlang.github.io/jq/download/). Without jq, boundary injection is disabled.
 
 **Q: Does wyx block bad code?**
-No. wyx injects boundary context before and after each edit — Claude sees it and self-checks. It's advisory, not enforcement. In testing with Opus-class models, compliance was consistent.
+No. wyx injects boundary context before and after each edit — Claude sees it and self-checks. It's advisory, not enforcement. In testing with Opus-class models, compliance was consistent. If you need a deterministic check, run an import checker (for example dependency-cruiser or import-linter) as your own PostToolUse hook: it reports violations to Claude right after each write (it cannot undo the write) and works alongside wyx.
 
 **Q: Does wyx catch writes via Bash (`echo > file`, `sed -i`)?**
 No. The hook matches Write, Edit, and NotebookEdit only. File modifications through Bash — or through MCP file-write tools (`mcp__server__*`) — bypass the hook entirely.
