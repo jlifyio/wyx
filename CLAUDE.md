@@ -184,14 +184,14 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Documentation
 
-- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-023). Check before making architectural changes.
+- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-024). Check before making architectural changes.
 - `docs/evaluation-protocol.md` — Concurrent A/B protocol for re-measuring boundary-violation rates (DEC-022).
 
 ## Design Decisions
 
 - **Hook type: command only** — prompt hooks lack spec access, agent hooks add 10-30s latency. Command hooks extract boundaries in ~2s.
 - **No truncation**: Boundary declarations delivered in full — incomplete boundaries defeat boundary checking.
-- **No qualification**: Boundary declarations are injected without caveats like "these might be stale" — qualified boundaries defeat boundary checking (same principle as no truncation).
+- **No qualification, no shouting**: Boundary declarations are injected without caveats like "these might be stale" — qualified boundaries defeat boundary checking (same principle as no truncation). The instructions wrapped around them give the reason and carry no capitalised NEVER/MUST (rationale: DEC-024; `scripts/check-rules.sh` checks the per-edit hooks it lists).
 - **Drift stays in `/wyx:concept`**: `/wyx:concept drift` checks all 3 spec types (CONCEPT, PIPELINE, SYNCS) including cross-spec reference validation and SYNCS graph consistency. Extracting into a separate `/wyx:drift` skill was deferred — no functional conflict yet.
 - **Read-only subagents only**: Concept drift and map generation use Explore-type subagents (structurally read-only — Write/Edit unavailable) for parallel scanning. Audit uses direct Glob+Grep (no subagents — YAGNI at current scale, and subagent Bash commands caused approval fatigue); when a harness exposes no Glob/Grep tools, audit falls back to read-only shell (Bash `find`/`ls`/`grep -r`) for discovery only — never for writes, preserving the read-only invariant (DEC-019). Full plugin agents remain excluded.
 - **One spec per directory**: Multi-file patterns (`CONCEPT-*.md`) were removed — they caused 83% irrelevant boundary context injection in flat directories.
