@@ -626,3 +626,36 @@ DEC-010 froze hook expansion absent (1) a new Claude Code platform capability or
 - No hook, script or spec-format change. DEC-010, DEC-013 and DEC-014 stand; DEC-010's status line points here.
 - DEC-010's condition (1) is met for the first time, by `bashEditDiff`. The deferral rests on DEC-013's evidence bar and the field's beta status, not on a platform limit; the trigger and constraints above make the next decision mechanical.
 - The FAQ directs users who need mechanical enforcement to their own PostToolUse checker, which runs beside wyx instead of being wrapped by it.
+
+---
+
+## DEC-024: Calm Injected Wording for Current Claude Models
+
+**Date:** 2026-09-24
+**Status:** Accepted
+**Source:** Owner question after DEC-022/023 ("could it be too strict?"), checked against Anthropic's prompting best-practices guide (platform.claude.com, fetched 2026-09-24) and the injected text in `scripts/drift-context.sh` / `scripts/post-check.sh`
+
+### Context
+Anthropic's guide reports that Claude Opus 4.5 and Opus 4.6 are "more responsive to the system prompt than previous models" and may overtrigger on prompts written to counter undertriggering: "The fix is to dial back any aggressive language", replacing "CRITICAL: You MUST…" with normal phrasing. It also ranks a bare `NEVER use ellipses` below the same rule with its reason. The guide scopes model-named techniques to the models it names; wyx applies them to its boundary instructions by analogy, unmeasured. wyx injects the opposite shape on every code edit near a spec: `BEFORE writing imports, verify each import target… Imports from concepts NOT listed… are boundary violations` (drift-context.sh), and `…are boundary violations` again after the edit (post-check.sh), alongside the "no qualification" principle. The README taught users to write `- NEVER directly accesses Orders repository…`, and the wyx-example repo copied that shape (3 lines); field specs in yorisen and aofuda also use capitalised `NEVER`/`MUST` (36 lines), mostly for domain invariants rather than boundaries. The plausible failure is over-application — avoiding a needed dependency, duplicating logic, or adding wrappers to route around a boundary — the same direction DEC-015 corrected in drift calibration. It is unmeasured. The emphatic hook sentence dates from v0.22.0, after the README measurement (v0.16.0), so softening it does not depart from any measured configuration.
+
+### Decision
+Wording only; no change to which sections are injected, when, or where:
+1. **Hooks**: the two instruction sentences state the check plainly with its reason, and name the legitimate path when a boundary blocks the task — say so and propose adding the concept to `## dependencies`, instead of working around it.
+2. **`/wyx:concept`**: one paragraph after the spec format asks for boundary lines as plain statements with a reason, not capitalised prohibitions, for lines the skill writes; existing specs are left alone unless the user asks.
+3. **README**: the diagram and the example spec use the recommended style. The "Why not just CLAUDE.md rules?" table now compares against nested CLAUDE.md and path-scoped `.claude/rules/` — native module-scoped loading the old table omitted — and says per-write timing is unmeasured.
+4. **Evaluation protocol**: an optional arm D (the same boundary sections as a path-scoped rule, no wyx), with its own pre-flight, and a note on comparing two wyx versions. C vs D compares wyx as shipped with native loading; it does not isolate timing.
+5. **Gate**: `scripts/check-rules.sh` fails when any line (comments included) of the per-edit hooks it lists carries a capitalised `NEVER` / `MUST` / `ALWAYS` / `CRITICAL` / `IMPORTANT` / `BEFORE` / `NOT`, when a listed hook no longer emits `additionalContext`, or when a file cannot be scanned.
+
+### Alternatives Considered
+- **Measure first, then reword**: Rejected as a precondition. The emphatic sentence was never part of a measured configuration, the change is two strings and reversible, and the protocol can compare the two versions (arm note, item 4). Measurement stays the way to settle the per-write timing question.
+- **Add qualifiers ("if appropriate", "consider")**: Rejected. That is the qualification the "no qualification" principle forbids; the boundary content stays unconditional — only the tone around it changes.
+- **Rewrite field specs and wyx-example**: Out of scope. Specs belong to their projects; wyx-example is a separate repository.
+- **Move injection to native loading** (nested `CLAUDE.md` with `@CONCEPT.md`, or path-scoped rules) or drop the PreToolUse sentence: Deferred until arm D gives data (DEC-013); it changes when context arrives, not how it reads.
+- **Lint the whole repo for capitals**: Rejected. Skill bodies use capitals for deliberate, reasoned contracts read during skill runs; the gate covers only text injected on every edit.
+
+### Consequences
+- Every edit near a spec now receives calm instructions with a stated reason and an explicit route for a needed dependency, which targets the over-application failure without weakening the boundary content.
+- The README no longer compares wyx against a straw man; its differentiators are stated as per-write reminders, a reviewable spec format and drift detection, with the timing claim marked unmeasured.
+- Behaviour change in injected text ⇒ minor version bump at release time (DEC-021 precedent).
+- The gate keeps the hook wording from drifting back; spec content copied verbatim stays the author's. `session-start.sh` prints status lines, not instructions, and is outside the gate.
+- Launch-era drafts (`docs/assets/demo-brief.md`, `docs/blog-draft.md`, `docs/launch-posts.md`) keep the old style; as with DEC-022's drafts, fix them before any reuse.
