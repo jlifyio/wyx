@@ -71,12 +71,13 @@ frontmatter of its own, so an unpinned dispatch **inherits the session model**. 
 at the call site; the callee cannot.
 
 This applies the owner's agent policy: agents that write code or make a judgment run on
-Opus, effort by role (implementers `high`, reviewers/verifiers `xhigh`); Haiku/Sonnet
+Opus, effort by role — `high` for judgment and implementation, `low` for mechanical
+edits, `xhigh` only where a measured quality gain over `high` justifies it; Haiku/Sonnet
 only for read-only lookup/search. Why: Opus 5.5 leads Fable 5.1 on published benchmarks
 at 40% of its price ($4/$20 vs $10/$50 per Mtok), so no role is worth a pricier tier.
 Effort is out of wyx's reach — the Agent tool has no effort parameter and effort comes
 from agent frontmatter, which `Explore` does not have — so the call-site pin is the
-model only.
+model only, and an `Explore` dispatch runs at the session's effort.
 
 **Enforced**, not remembered: `scripts/check-rules.sh` fails when a `subagent_type`
 line under `skills/` has no `model:` naming `opus`, `sonnet` or `haiku` in its section,
