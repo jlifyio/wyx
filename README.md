@@ -26,7 +26,7 @@ graph LR
 
 You write a short spec describing your module boundaries. wyx injects those boundaries into Claude's context before and after every edit near the spec — Claude sees them before each edit and gets a dependency reminder after.
 
-**In testing (N=6 features, 2 projects):** 33 cross-module imports checked, 0 violations. Small sample — see [methodology](#test-results-and-methodology) for caveats. Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
+**In testing (N=6 features, 2 projects, pre-PostToolUse build):** 33 cross-module imports checked, 0 violations. Small sample — see [methodology](#test-results-and-methodology) for caveats. Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
 
 ## Install
 
@@ -176,7 +176,7 @@ src/lib/
 <details id="test-results-and-methodology">
 <summary><strong>Test results and methodology</strong></summary>
 
-Tested on 2 real projects across 6 features with a controlled baseline:
+Tested on 2 real projects across 6 features against a before/after baseline:
 
 | Metric | Baseline (no wyx) | With wyx |
 |--------|-------------------|----------|
@@ -184,7 +184,7 @@ Tested on 2 real projects across 6 features with a controlled baseline:
 | Cross-module imports checked | — | 33 imports, 0 violations |
 | Statistical significance | — | p = 0.21 feature-level (N=6) |
 
-Tested with Claude-assisted development; untested with other LLMs. N=6 features, 2 projects, single developer. Before/after methodology — the developer's improved architectural understanding from writing specs may independently contribute to fewer violations.
+Tested with Claude-assisted development; untested with other LLMs. N=6 features, 2 projects, single developer. Before/after methodology — the developer's improved architectural understanding from writing specs may independently contribute to fewer violations. The two periods were not concurrent, so model or Claude Code updates between them are a further uncontrolled factor. These figures predate the PostToolUse reminder (added in v0.22.0), so they say nothing about it. [docs/evaluation-protocol.md](docs/evaluation-protocol.md) describes a concurrent A/B protocol for re-measuring.
 
 Additional findings:
 - Drift detection found a **real silent data loss bug** (SQL UPDATE missing 2 of 5 fields)
@@ -233,10 +233,22 @@ One. Start with the module where Claude most often violates boundaries. Each add
 
 ## Background
 
-wyx adapts ideas from two sources for LLM-assisted development:
+wyx adapts ideas from **WYSIWID** — Meng & Jackson, ["What You See Is What It Does"](https://arxiv.org/abs/2508.14511) (MIT, Onward! 2025), a structural pattern for legible software: independent concepts (purpose, state, actions, operational principle) composed by synchronizations that an engine executes. wyx takes its concept spec format and its concept/sync vocabulary and applies them to LLM-assisted development.
 
-- **WYSIWID**: Meng & Jackson, ["What You See Is What It Does"](https://arxiv.org/abs/2508.14511) (MIT, Onward! 2025) — concept specs and boundary declarations as a structural pattern for legible software.
-- **WYWIWID**: Dr. Ernie, ["What You Write Is What It Did"](https://ihack.us/2025/11/13/what-you-write-is-what-it-did-a-legible-pattern-for-structuring-software/) — evidence-based legibility via drift detection and data pipeline invariants.
+<details>
+<summary><strong>How wyx differs from WYSIWID</strong></summary>
+
+wyx works on conventional code — existing codebases, and new code written without a concept runtime — so it relaxes the pattern where such code cannot follow it:
+
+- **Concepts may call each other's actions.** In WYSIWID a concept knows nothing of other concepts, not even their interfaces, and all cross-concept control flow goes through synchronizations. wyx lets a concept call another's declared actions and records that in `## dependencies`; `## known coupling` documents intentional direct data access, each entry with a keep/refactor/defer status. The boundary sections the hooks inject are wyx's addition, not part of WYSIWID.
+- **Syncs are documentation, not code.** WYSIWID synchronizations are declarative rules that an engine runs. `SYNCS.md` describes sync handlers implemented in ordinary code, and `/wyx:concept drift` checks the two against each other after the fact.
+- **No runtime.** The WYSIWID engine logs every action with its provenance — the synchronization that caused it. wyx ships no engine and no action log: only specs, hooks, and LLM drift checks.
+
+A later paper by Meng, Jackson and colleagues, ["Making Software Meaningful"](https://arxiv.org/abs/2606.11051) (2026), describes a TypeScript implementation of the pattern for LLM code generation. For new code where full concept independence is the goal, that approach builds it into the structure; wyx is a guardrail for code that lacks it.
+
+</details>
+
+See also: Dr. Ernie, ["What You Write Is What It Did"](https://ihack.us/2025/11/13/what-you-write-is-what-it-did-a-legible-pattern-for-structuring-software/) — a data-centred response to WYSIWID built on stateless workers, immutable artifacts, declarative specs, and provenance logs.
 
 ## Project structure
 

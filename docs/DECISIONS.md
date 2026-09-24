@@ -550,3 +550,41 @@ A four-agent review of the shipped plugin surfaced two framing/behavior issues d
 - Behavior change ⇒ minor version bump (0.25.0), not a patch — applied by `/release-kit:release v0.25.0` at release time (plugin.json version + README badge/tag link), so this commit still carries the 0.24.1 manifest by design.
 - Shipped in the same release: portability fixes that are bug-fixes, not decisions — quote `${CLAUDE_PLUGIN_ROOT}` in hooks.json (space-in-path total-failure), bash 3.2-safe `tr` capitalization replacing `${section^}`, `find … -prune` replacing post-walk `-not -path` filtering (≈3× faster session-start), and whitespace/hidden-root-safe directory reporting in session-start.sh.
 - Framing is context-only like every other wyx claim — honesty in the docs, not enforcement in the hook.
+
+---
+
+## DEC-022: Honest Lineage and Evidence Framing — WYSIWID Differences, Citation Fixes, Concurrent A/B Protocol
+
+**Date:** 2026-09-24
+**Status:** Accepted
+**Source:** External review of v0.26.1 (lineage, citations, measurement), verified against primary sources: Meng & Jackson 2025 (arXiv 2508.14511v2, full text), Jackson's blog post of 2025-08-31 (essenceofsoftware.com/posts/wysiwid), Meng et al. 2026 (arXiv 2606.11051v1), the WYWIWID post (ihack.us, 2025-11-13), the MIT 6.1040 Fall 2025 `conceptbox` starter kit, and the `v0.16.0` tag (`git show v0.16.0:README.md`, `v0.16.0:hooks/hooks.json`)
+
+### Context
+The review claimed the README presents wyx as adapting WYSIWID without saying where it departs from it. Verification confirmed that, and found two errors in wyx's own attribution plus a gap in the test-results caveat:
+1. **Independence.** WYSIWID concepts "have no knowledge of the interfaces (let alone the internals) of other concepts" (blog), and "Concept actions do not call actions or access the state of other concepts" (paper §7.2). wyx lets a concept call another's declared actions (concept/SKILL.md Design Rules 2–3, `## dependencies`, drift-detection.md "Sanctioned coupling") and documents direct data access in `## known coupling`.
+2. **Syncs and runtime.** WYSIWID syncs are declarative rules executed by an engine that records each action's provenance (paper §6, §6.6). wyx's `SYNCS.md` documents handlers implemented in ordinary code and is checked by LLM drift detection; wyx has no runtime and no action log. The review traced the missing action log to Design Rule 5 — incorrectly: Rule 5 forbids deriving logging/metrics infrastructure from action declarations when writing specs (commit f92c446). The actual reason is that wyx has no runtime.
+3. **"Boundary declarations" are not a WYSIWID element.** The paper's full text has no such notion; it says type parameters "cannot be constrained, so this ensures no external coupling or dependence" (§4). README Background and CLAUDE.md both attributed them to WYSIWID.
+4. **The WYWIWID summary is unsupported.** README and CLAUDE.md summarised the post as "drift detection and data pipeline invariants"; its body contains none of "drift", "pipeline" or "invariant". It is a response written from a ChatGPT prompt shown at its top, proposing WASP — stateless workers, immutable artifacts, declarative specs, provenance — and it states WYSIWID has "No Concrete Runtime", which the paper's §6 engine and the blog's SPARQL and TypeScript implementations contradict.
+5. **Measurement caveat gap.** The README figures were already published with v0.16.0 (2026-02-27), whose hooks.json registers SessionStart and PreToolUse only; PostToolUse arrived in v0.22.0 (DEC-014). The README's before/after design also leaves model and Claude Code updates between the two periods uncontrolled. The repository holds no raw data or run dates, so the size of that gap cannot be recovered.
+
+### Decision
+Documentation only:
+1. **README Background** states what wyx takes from WYSIWID (spec format, concept/sync vocabulary) and adds a collapsed "How wyx differs from WYSIWID" block: calls between concepts, documentation-only syncs, no runtime — plus one line citing Meng et al. 2026 as later related work.
+2. **WYWIWID** moves from "source" to "see also", described by what the post actually proposes. wyx no longer attributes drift detection or pipeline invariants to it.
+3. **CLAUDE.md** Project Overview mirrors (1) and (2).
+4. **README methodology** adds the non-concurrency and pre-PostToolUse caveats, the above-the-fold figures line gains a "pre-PostToolUse build" qualifier, and the methodology links a new `docs/evaluation-protocol.md`: a concurrent A/B protocol (control vs treatment arms from one commit, pinned model, k runs per arm, one worktree per run, pre-registered scoring, arm isolation checked from the `system/init` event).
+
+### Alternatives Considered
+- **Cite Meng et al. 2026 as a source** (review P2): Rejected. It was published 2026-06-09, after wyx's first release; wyx cannot have adapted it. It is cited as later related work. Its §5.3 "code of conduct" governs autonomous research agents by auditing action traces — it injects nothing into an agent's context — so it is not closer to wyx's mechanism than the 2025 paper.
+- **Add a "Related work" list of implementations** (LegibleSync, cs-framework, conceptbox): Rejected. The README serves Claude Code users (DEC-004), a third-party list needs upkeep, and two of the three are small independent projects. Contrary to the review, `conceptbox` is not unofficial: it is the MIT 6.1040 Fall 2025 starter kit, and its engine is "Copyright (c) Eagon Meng, MIT CSAIL".
+- **Keep WYWIWID as a source with a corrected summary**: Rejected unless the maintainer can name what wyx took from it — the attributed ideas are not in its text, and restating an unshowable lineage is the overclaim DEC-007 rejects.
+- **Put the differences above the fold**: Rejected (DEC-004/005). The landing page leads with the Claude Code user's problem; lineage is reference material.
+- **A separate `docs/background.md`** (DEC-004's channel for researchers): Rejected. That file was never created, and the correction belongs next to the README claim it corrects; a collapsed block keeps it below the fold without a new document.
+- **Rebut the WYWIWID runtime claim in the README**: Rejected. The README describes WYSIWID's runtime directly and relies on the post for nothing, so a rebuttal would be off-audience.
+
+### Consequences
+- The README stops implying that the injected boundary sections and calls between concepts are WYSIWID features: DEC-007's overclaim rule, applied to lineage instead of capability.
+- A reader who knows Jackson's work can see which rules wyx relaxes and why — conventional code calls across modules, and DEC-015 added "Sanctioned coupling" after drift agents flagged public-action calls as Critical 4+ times.
+- The numbers are unchanged. The caveat now names the two gaps the before/after design leaves, and the protocol offers a way to replace the figures rather than defend them.
+- `docs/blog-draft.md` and `docs/launch-posts.md` still carry the old attributions and the "down from 33%" framing next to a description of both hooks. They are launch drafts and are left as-is; fix them before any reuse.
+
