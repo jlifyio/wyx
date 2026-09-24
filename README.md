@@ -6,7 +6,7 @@
 
 ```mermaid
 graph LR
-    A["You write CONCEPT.md<br/>## interactions<br/>- NEVER access Orders repository"] -->|"wyx hook fires<br/>on edits near the spec"| B["Claude sees boundaries<br/>before writing code"]
+    A["You write CONCEPT.md<br/>## dependencies<br/>- Orders: read-only via getOrderTotal()"] -->|"wyx hook fires<br/>on edits near the spec"| B["Claude sees boundaries<br/>before writing code"]
     B --> C["Claude uses getOrderTotal()<br/>via service API ✅"]
     B -.->|"without wyx"| D["Claude imports findOrder()<br/>from orders/repository ❌"]
 
@@ -47,8 +47,7 @@ Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support a
 # concept: Payments [PaymentId]
 
 ## interactions
-- READS order total FROM Orders (via getOrderTotal service API only)
-- NEVER directly accesses Orders repository or Inventory internals
+- Reads the order total through `Orders.getOrderTotal()`; the Orders repository and Inventory internals are private to those concepts, so Payments does not import them
 
 ## dependencies
 - Orders: read-only via getOrderTotal()
@@ -81,14 +80,14 @@ Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support a
 
 ## Why not just CLAUDE.md rules?
 
-| | CLAUDE.md rules | wyx |
+| | CLAUDE.md, nested CLAUDE.md, `.claude/rules/` | wyx |
 |---|---|---|
-| **Delivery** | Loaded in system context, project-wide | Injected before and after each write, module-specific |
-| **Specificity** | Project-wide guidelines | Per-module boundary declarations |
-| **Staleness** | No warning when rules diverge from code | Drift detection catches divergence |
-| **Colocation** | Separate from implementation | Specs live next to the code they describe |
+| **Delivery** | At launch: CLAUDE.md from the working directory up, and rules without `paths`. On read: nested CLAUDE.md and path-scoped rules for the file Claude reads | Before and after each write near a spec |
+| **Format** | Free-form instructions for Claude | Structured spec (purpose, state, actions, boundaries) that people review too |
+| **Staleness** | No check against the code | Drift detection compares spec and code |
+| **Colocation** | Nested CLAUDE.md sits in its directory; `.claude/rules/` usually at the project root | Next to the code it describes |
 
-Both rely on Claude choosing to comply. The difference is timing and targeting — wyx puts boundaries in context at the moment Claude writes, not pages of context away.
+All of these rely on Claude choosing to comply. Nested CLAUDE.md and path-scoped rules already give Claude module-specific context when it reads a file; wyx adds a reminder at the moment of each write, a spec format that doubles as design documentation, and drift detection. Whether wyx improves compliance over read-time loading has not been measured; [docs/evaluation-protocol.md](docs/evaluation-protocol.md) includes an arm that compares wyx as shipped with the same boundary sections loaded natively.
 
 ## Skills
 

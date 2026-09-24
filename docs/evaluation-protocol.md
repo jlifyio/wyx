@@ -14,11 +14,17 @@ model. Rationale: DEC-022.
 | B — control | yes | no | Claude can still read CONCEPT.md itself |
 | C — treatment | yes | yes (`--plugin-dir`) | Adds the plugin: hook injection plus skill listings |
 | A — optional | no (deleted before the run) | no | Measures what the specs alone contribute |
+| D — optional | yes | no; the same boundary sections as a path-scoped rule in `.claude/rules/` | Compares wyx with Claude Code's native loading |
 
 B vs C isolates the plugin (its hooks plus its skill listings): both arms can
 read the specs, so a difference comes from wyx, not from the specs existing.
 A vs B measures the specs themselves — the automated counterpart of the
-"writing specs helps" confound.
+"writing specs helps" confound. C vs D compares wyx as shipped (boundary
+sections, its instruction sentences, the post-edit reminder and the skill
+listings) with the same boundary sections loaded natively on read, so a
+difference is not attributable to timing alone. To compare
+two wyx versions (e.g. before and after a wording change), run two C arms with
+`--plugin-dir` pointing at a worktree of each version.
 
 ## Before any run
 
@@ -83,8 +89,13 @@ hook events, so select it by type (`jq 'select(.type=="system" and
   `PreToolUse` has a `stdout` containing `wyx drift context:` once an edit lands
   near a spec. (A wyx SessionStart response appears at startup regardless, so
   it proves nothing about injection.)
-- **A, B**: `plugins` has no `wyx` entry, and no `hook_response` `stdout`
+- **A, B, D**: `plugins` has no `wyx` entry, and no `hook_response` `stdout`
   contains `wyx drift context:`.
+- **D**: before the run, write `.claude/rules/<module>.md` in the worktree —
+  `paths:` covering the module, the spec's boundary sections as the body.
+  Confirm it loads with a throwaway prompt that reads a matching file and asks
+  Claude to quote the rule (a `paths` glob that never matches silently turns D
+  into B), and exclude `.claude/rules/` from the scored diff.
 - **All**: `model`, `claude_code_version` and `permissionMode` are identical
   across arms. If not, discard the batch.
 
