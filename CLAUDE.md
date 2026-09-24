@@ -6,9 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **wyx** is a Claude Code plugin that provides architecture guardrails for LLM-assisted development. The core mechanism: when Claude writes code near a module with a spec, the PreToolUse hook automatically injects boundary declarations into Claude's context, reducing cross-module violations.
 
-Adapts ideas from two sources:
-- **WYSIWID** (Meng & Jackson, MIT) — concept spec format and boundary declarations
-- **WYWIWID** (Dr. Ernie) — evidence-based legibility concepts (concept drift detection, pipeline invariants)
+Adapts ideas from **WYSIWID** (Meng & Jackson, MIT): the concept spec format and the concept/sync vocabulary. The injected boundary sections, calls between concepts, documentation-only syncs and the absence of a runtime are wyx's own departures — README §Background and DEC-022 record them. WYWIWID (Dr. Ernie) is cited as see-also only (DEC-022).
 
 This is a Claude Code plugin (5 SKILL.md files + 3 hooks), not a CLI tool or runtime engine. The primary differentiator is the hooks — the skills are convenience packaging for generating the specs that fuel the hooks.
 
@@ -186,7 +184,8 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Documentation
 
-- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-021). Check before making architectural changes.
+- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-023). Check before making architectural changes.
+- `docs/evaluation-protocol.md` — Concurrent A/B protocol for re-measuring boundary-violation rates (DEC-022).
 
 ## Design Decisions
 
