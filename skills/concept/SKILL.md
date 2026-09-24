@@ -72,6 +72,8 @@ Each entry: resource, access pattern, reason, and resolution status.]
 - [ExternalConcept/resource]: [access pattern] — reason: [why] — status: keep|refactor|defer
 ```
 
+Write boundary lines as plain statements that give the reason, not as capitalised prohibitions (`NEVER`, `MUST`) — e.g. in `## dependencies`: `- Orders: order total via Orders.getOrderTotal(); its repository is private to Orders`. The hooks inject these sections verbatim before each edit near the spec, and Anthropic's prompting guidance for recent models favours a stated reason over emphatic commands. This applies to lines you write; leave an existing spec's wording alone unless the user asks.
+
 ## Design Rules
 
 Apply these five rules when generating or reviewing a concept spec:

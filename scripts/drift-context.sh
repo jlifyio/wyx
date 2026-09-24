@@ -69,7 +69,7 @@ extract_section() {
 # Case-insensitive section extraction: try lowercase first, then capitalized
 # (older specs use `## Purpose`, newer specs use `## purpose`). Capitalizes
 # only the first letter — matches both "purpose"→"Purpose" and
-# "data boundary"→"Data boundary" (NOT "Data Boundary"; that pattern was
+# "data boundary"→"Data boundary" (not "Data Boundary"; that pattern was
 # already absent before this helper).
 extract_section_ci() {
   local file="$1" section="$2"
@@ -227,7 +227,7 @@ if [ -n "$found_specs" ]; then
         # only directories with no ancestor CONCEPT.md emit `## data boundary`
         # alone — referencing `## dependencies` there is misleading.
         if [ -n "$dependencies" ] || [ -n "$anc_dependencies" ]; then
-          ctx="${ctx}"$'\nBEFORE writing imports, verify each import target against ## dependencies above. Imports from concepts NOT listed in ## dependencies are boundary violations.'
+          ctx="${ctx}"$'\nBefore adding an import, check its target against ## dependencies above. The spec lists the concepts this module is designed to use, so importing any other concept crosses a declared boundary. If the task needs an unlisted concept, say so and propose adding it to ## dependencies before writing the import, instead of working around the boundary.'
         else
           ctx="${ctx}"$'\nVerify changes respect the boundaries declared above.'
         fi

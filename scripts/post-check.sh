@@ -120,7 +120,7 @@ concept_name=$(basename "$(dirname "$concept_path")")
 ctx="wyx post-edit check: file governed by ${concept_name} (${relative_spec}).
 Declared dependencies:
 ${dependencies}
-Verify any imports added by this edit target only declared dependencies above. Imports from undeclared concepts are boundary violations."
+Check that any import this edit added comes from a dependency listed above — those are the concepts this module is designed to use, and an import from an unlisted concept crosses a declared boundary. If the edit needed one, say so and propose adding it to ## dependencies before keeping the import."
 
 # `|| true` guards the load-bearing emit: if jq dies the hook exits 0 silently
 # rather than failing the user's edit. SessionStart already warned about jq once.
