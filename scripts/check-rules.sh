@@ -148,6 +148,59 @@ else
     esac
 fi
 
+# --- Rule: injected hook text is calm, not emphatic -------------------------
+#
+# CLAUDE.md -> Design Decisions "No qualification, no shouting"; DEC-024 holds
+# the rationale. The instructions the per-edit hooks inject around boundary
+# declarations carry no capitalised prohibitions.
+# Scope: EVERY line of the listed hooks, comments included — a line inside a
+# multi-line injected string can start with `#` (a markdown heading), so a
+# comment filter would let exactly that text through. Spec content the hooks
+# copy verbatim is the user's and is not checked. session-start.sh is out of
+# scope: it prints status lines, not instructions.
+printf -- '--- injected hook text is calm ---\n'
+calm_files="scripts/drift-context.sh scripts/post-check.sh"
+calm_hits=0
+calm_err=0
+for f in $calm_files; do
+    if [ ! -f "$f" ]; then
+        echo "  MISSING SCAN ROOT: $f — an eroded scope reports clean."
+        calm_err=1; continue
+    fi
+    # Scope guard: a listed hook that no longer emits additionalContext means
+    # the injection moved elsewhere, and scanning this file would report clean.
+    rc=0
+    /usr/bin/grep -a -q 'additionalContext:\$ctx' "$f" || rc=$?
+    if [ "$rc" -eq 1 ]; then
+        echo "  SCOPE ERROR: $f no longer emits additionalContext — update calm_files."
+        calm_err=1; continue
+    elif [ "$rc" -gt 1 ]; then
+        printf '  SCAN ERROR: %s — grep exited %d.\n' "$f" "$rc"
+        calm_err=1; continue
+    fi
+    # One grep and no pipe, so its own status is the verdict: 1 is clean,
+    # 2+ means the file was not scanned (unreadable file, broken pattern).
+    # A pipe here would hand the verdict to the last command and hide a 2.
+    rc=0
+    hits=$(/usr/bin/grep -a -n -E '\b(NEVER|MUST|ALWAYS|CRITICAL|IMPORTANT|BEFORE|NOT)\b' "$f") || rc=$?
+    if [ "$rc" -gt 1 ]; then
+        printf '  SCAN ERROR: %s — grep exited %d.\n' "$f" "$rc"
+        calm_err=1; continue
+    fi
+    if [ -n "$hits" ]; then
+        printf '%s\n' "$hits" | sed "s|^|  EMPHATIC: $f:|"
+        calm_hits=1
+    fi
+done
+[ "$calm_err" -eq 0 ] || fail=$((fail + 1))
+if [ "$calm_hits" -ne 0 ]; then
+    fail=$((fail + 1))
+    printf '  Fix: state the rule plainly with its reason (see DEC-024).\n'
+fi
+if [ "$calm_err" -eq 0 ] && [ "$calm_hits" -eq 0 ]; then
+    printf '  OK: injected hook text carries no capitalised prohibitions.\n'
+fi
+
 # ─── end tripwires ───
 
 if [ "$fail" -gt 0 ]; then
