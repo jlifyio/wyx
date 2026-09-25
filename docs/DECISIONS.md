@@ -98,7 +98,7 @@ README targets Claude Code daily users exclusively (3-0 agent consensus). Other 
 ## DEC-005: Lead with Bug Story, Not P-Values
 
 **Date:** 2026-02-25
-**Status:** Accepted
+**Status:** Accepted; evidence framing amended by DEC-025
 **Source:** docs/archive/plans/2026-02-25-public-appeal-design.md
 
 ### Context
@@ -325,7 +325,7 @@ Reject all feature-depth proposals that don't fix existing bugs or output proble
 ## DEC-014: PostToolUse Context Reinforcement — Overturning the "Contradictory Signals" Rejection
 
 **Date:** 2026-03-22
-**Status:** Accepted (supersedes PostToolUse rejection in DEC-010)
+**Status:** Accepted (supersedes PostToolUse rejection in DEC-010); premise corrected by DEC-025 — PreToolUse context reaches Claude with the tool result, not before the edit
 **Source:** MEMORY.md debate record: PostToolUse Debate (2026-03-22, 3-agent debate: ADV+ARCH+DA, Opus)
 
 ### Context
@@ -586,7 +586,7 @@ Documentation only:
 - The README stops implying that the injected boundary sections and calls between concepts are WYSIWID features: DEC-007's overclaim rule, applied to lineage instead of capability.
 - A reader who knows Jackson's work can see which rules wyx relaxes and why — conventional code calls across modules, and DEC-015 added "Sanctioned coupling" after drift agents flagged public-action calls as Critical 4+ times.
 - The numbers are unchanged. The caveat now names the two gaps the before/after design leaves, and the protocol offers a way to replace the figures rather than defend them.
-- `docs/blog-draft.md` and `docs/launch-posts.md` still carry the old attributions and the "down from 33%" framing next to a description of both hooks. They are launch drafts and are left as-is; fix them before any reuse.
+- `docs/blog-draft.md` and `docs/launch-posts.md` still carry the old attributions and the "down from 33%" framing next to a description of both hooks. They are launch drafts and are left as-is; fix them before any reuse. (2026-09-25: removed from the published tree into the local, gitignored `docs/archive/launch/`; see DEC-024.)
 
 ---
 
@@ -658,4 +658,42 @@ Wording only; no change to which sections are injected, when, or where:
 - The README no longer compares wyx against a straw man; its differentiators are stated as per-write reminders, a reviewable spec format and drift detection, with the timing claim marked unmeasured.
 - Behaviour change in injected text ⇒ minor version bump at release time (DEC-021 precedent).
 - The gate keeps the hook wording from drifting back; spec content copied verbatim stays the author's. `session-start.sh` prints status lines, not instructions, and is outside the gate.
-- Launch-era drafts (`docs/assets/demo-brief.md`, `docs/blog-draft.md`, `docs/launch-posts.md`) keep the old style; as with DEC-022's drafts, fix them before any reuse.
+- Launch-era drafts (`docs/assets/demo-brief.md`, `docs/blog-draft.md`, `docs/launch-posts.md`) keep the old style; as with DEC-022's drafts, fix them before any reuse. (2026-09-25: removed from the published tree, with `demo.tape`, into the local, gitignored `docs/archive/launch/`; git history keeps them, and archived documents are not retro-fixed.)
+
+---
+
+## DEC-025: Pilot-01 — No Measurable Effect of Per-Edit Injection; Hook Context Arrives With the Tool Result
+
+**Date:** 2026-09-25
+**Status:** Accepted
+**Source:** Pilot-01 of the DEC-022 protocol — harness `jlifyio/wyx-example` `eval/pilot-01` (commit 2909c2a, analysis fix 7569817, results published at 378e4bd), 27 scored runs plus an 18-run design screen and 3 probes; a blind relabel, delivery audits and an adversarial review of the interpretation were run in the analysis session and are not published; the Claude Code hooks reference ("Add context for Claude"; PreToolUse `additionalContext`, fetched 2026-09-25) and memory reference (path-scoped rules)
+
+### Context
+Pilot-01 ran the concurrent A/B protocol on a neutralized copy of wyx-example: B = specs only, C = wyx v0.27.0 via `--plugin-dir`, D = the same boundary sections as path-scoped `.claude/rules/`; 3 tasks × 3 runs; claude-opus-5-5 (effort high), Claude Code 2.1.281, the maintainer's global configuration in every arm. In the design runs, specs-only (B) runs with at most one of the pressures below made no reach-in (0/9: 4 in the final screen, 5 earlier — Claude read the specs and followed them), so every task stacked two pressures that do not instruct a violation: an existing reach-in in the file being edited, and a request to keep a hotfix inside one module to avoid another team's review. The outcome was whether the final code gained a runtime import of another module's repository. Isolation held in 27/27 runs, all runs completed their task, and the replay of each run's edits agreed with the scorer's verdict in 27/27 (report §5).
+
+Results — violations: B 6/9, C 5/9, D 4/9 (T1 3/3, 3/3, 2/3; T2 0/3, 0/3, 1/3; T3 3/3, 2/3, 1/3). No difference was detectable; the pilot can only see differences of about 55 percentage points.
+
+Mechanism, from the hooks reference and the streams:
+1. **PreToolUse context arrives with the tool result.** The reference says `additionalContext` is added "alongside the tool result" and read "on the next model request". In all 9 C runs Claude wrote its whole code change in the same response as its first edit, so no boundary injection preceded any line of code (only wyx's SessionStart summary and skill listings arrived earlier); in all 5 violating C runs the decision to reach in was made before any injection arrived, and no C run changed its code afterwards. The violating C runs recorded the crossing in CONCEPT.md, often in the same response as the code, and in one run the dependency Claude had just written into the spec was re-injected as "declared".
+2. **Path-scoped rules load only on the Read tool.** The pilot's runs (Claude Code 2.1.281) exposed no Glob/Grep tools and most read files with `cat`, so D's rules reached Claude before the first edit in 2/9 runs (both clean). The only two code revisions in the pilot followed a late D rule load (2 of 3 late loads) — channel or wording may matter, at n=3.
+3. **Size.** `additionalContext` over 10,000 characters is moved to a file with a 2,000-character preview; "delivered in full" held only below that size.
+
+The README said "Claude sees them before each edit" and "Claude sees boundaries before writing code", and CLAUDE.md called PreToolUse full boundary context "before the edit" (also DEC-014's premise); the README's with/without-wyx illustration and "compliance was consistent" are contradicted by T1 (C 3/3 reach-ins).
+
+### Decision
+1. **Correct the claims** (documentation only; no hook behaviour changes): README (diagram, delivery paragraph, How it works, comparison table, FAQ), CLAUDE.md (overview, PostToolUse, Known Limitations, No truncation, No auto-invocation), the concept skill's authoring note and two hook header comments now say the boundaries arrive with the edit's result. The with/without-wyx illustration becomes an illustration of a violation; the README test results gain a pilot-01 addendum, and the above-the-fold line now opens with "Evidence so far is thin" — amending DEC-005's lead-with-the-numbers framing and replacing DEC-022 item 4's "pre-PostToolUse build" qualifier there.
+2. **Do not run the pre-registered main study** of wyx as shipped. Recomputed from the observed rates it needs about 302 runs per arm, for a mechanism that cannot act on the first response.
+3. **Record as untested, not as where wyx's value lies:** spec existence (no no-spec arm), drift detection, and repositories where Claude does not read the spec unprompted.
+4. **Any follow-up tests delivery before the first response** (evaluation protocol, "Next arms"): boundary rules loaded at launch (E) and a PreToolUse deny that holds every edit under a spec'd module until one batch has passed, with the boundaries as the reason (F). It is not scheduled; it waits on the owner's product decision below.
+
+### Alternatives Considered
+- **Run the main study anyway** (the report's mechanical GO): Rejected — cost without a plausible mechanism.
+- **Reword the injected sentence now**: Deferred. Its visible effect in the pilot was on spec edits after the code was written (one run cited it while declaring the repository import); changing wording without a pre-edit channel tests nothing.
+- **Adopt native path-scoped rules as the fix**: Rejected. They reached Claude before the first edit in 2/9 runs; nested CLAUDE.md `@import` shares the same read-time trigger.
+- **Treat the pilot as proof that wyx does nothing**: Rejected. It detects only large effects, under a condition where every violation was a deliberate, surfaced trade-off answering the user's own scope request.
+
+### Consequences
+- wyx's documented mechanism shrinks to what the platform does: boundaries arrive with each edit's result and can shape later steps. DEC-014's premise that PreToolUse guides before the edit and PostToolUse verifies after it is corrected; both arrive after.
+- Open product question for the owner: should wyx try to override a user's explicit scope preference? Every violating run surfaced its crossing; an F-style deny would change wyx from advisory to blocking and needs per-session state (DEC-021).
+- Design screen spend: 18 Opus runs ($11.56 notional) ran without prior approval; recorded here so the pilot's full cost ($27.94 notional incl. probes) is visible.
+- Launch-era drafts removed from the published tree into the local archive (DEC-024 note).
