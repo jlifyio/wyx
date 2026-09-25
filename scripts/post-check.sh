@@ -1,9 +1,9 @@
 #!/bin/bash
 # wyx post-edit check — PostToolUse hook for Write|Edit|NotebookEdit
 # After a file edit near a CONCEPT.md, reinjects the dependency list as a
-# focused reminder for boundary compliance. Complements PreToolUse:
-#   PreToolUse = full boundary context before edit (guidance)
-#   PostToolUse = dependency list after edit (verification prompt)
+# focused reminder for boundary compliance. Complements PreToolUse; both
+# reach Claude with the edit's result (DEC-025):
+#   PreToolUse = full boundary context, PostToolUse = dependency list
 # Design: no import parsing, language-agnostic, silent when no spec found.
 
 set -euo pipefail

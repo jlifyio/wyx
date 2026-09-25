@@ -72,7 +72,7 @@ Each entry: resource, access pattern, reason, and resolution status.]
 - [ExternalConcept/resource]: [access pattern] — reason: [why] — status: keep|refactor|defer
 ```
 
-Write boundary lines as plain statements that give the reason, not as capitalised prohibitions (`NEVER`, `MUST`) — e.g. in `## dependencies`: `- Orders: order total via Orders.getOrderTotal(); its repository is private to Orders`. The hooks inject these sections verbatim before each edit near the spec, and Anthropic's prompting guidance for recent models favours a stated reason over emphatic commands. This applies to lines you write; leave an existing spec's wording alone unless the user asks.
+Write boundary lines as plain statements that give the reason, not as capitalised prohibitions (`NEVER`, `MUST`) — e.g. in `## dependencies`: `- Orders: order total via Orders.getOrderTotal(); its repository is private to Orders`. The hooks inject these sections verbatim with the result of each edit near the spec, and Anthropic's prompting guidance for recent models favours a stated reason over emphatic commands. This applies to lines you write; leave an existing spec's wording alone unless the user asks.
 
 ## Design Rules
 
@@ -157,7 +157,7 @@ procedure, check tables, calibration rules, and report format.
 
 ## When Updating an Existing Concept
 
-For modules that already have specs, prefer **spec-first updates**: modify `## actions` or `## state` in CONCEPT.md before implementing the change, so the PreToolUse hook injects updated boundaries immediately. Retrofit mode (code first → spec after) remains the right approach for initial spec creation of existing code.
+For modules that already have specs, prefer **spec-first updates**: modify `## actions` or `## state` in CONCEPT.md before implementing the change, so the spec states the intended contract while you work (the hooks inject only `## purpose`, `## interactions` and `## dependencies`, with each edit's result). Retrofit mode (code first → spec after) remains the right approach for initial spec creation of existing code.
 
 If `CONCEPT.md` already exists for the module:
 

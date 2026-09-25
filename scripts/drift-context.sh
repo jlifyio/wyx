@@ -1,10 +1,10 @@
 #!/bin/bash
-# wyx drift context — PreToolUse hook for Write|Edit
+# wyx drift context — PreToolUse hook for Write|Edit|NotebookEdit
 # When a file is written near a CONCEPT.md or PIPELINE.md, outputs spec
 # context including boundary declarations so the LLM can self-check
-# boundary compliance. SYNCS.md is listed in spec context but does not
-# stop traversal or inject boundaries. This replaces aspirational
-# CLAUDE.md rules with a mechanical checkpoint.
+# boundary compliance. Claude receives it with the edit's result, not
+# before the edit (DEC-025). SYNCS.md is listed in spec context but does
+# not stop traversal or inject boundaries.
 
 set -euo pipefail
 
