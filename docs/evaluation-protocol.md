@@ -123,6 +123,52 @@ start time; cost and turns from the final `result` event; the diff
 - Report every run, including failures and aborts. No post-hoc exclusions.
 - State the limits: one model, the chosen projects and tasks, Claude only.
 
+## Delivery checks learned from pilot-01
+
+Confirm each arm's condition actually reached Claude before judging it:
+
+- **wyx (C)**: PreToolUse `additionalContext` is added next to the tool result
+  and read on the next model request. It never precedes the edit that triggers
+  it, nor other edits in the same response. Record whether the run wrote its
+  code in one response; in pilot-01 all 9 C runs did.
+- **Path-scoped rules (D)**: they load only when Claude uses the Read tool on a
+  matching file. `cat` through Bash and Write/Edit do not load them, and the
+  pilot's runs exposed no Glob/Grep tools, so most read files with `cat`.
+  Log `InstructionsLoaded` and compare its timestamps with the first edit.
+
+## Pilot-01
+
+The reference implementation is
+[wyx-example/eval/pilot-01](https://github.com/jlifyio/wyx-example/tree/main/eval/pilot-01):
+neutralized fixture, blinded AST scorer, stream preflight, replay and analysis,
+with the full report under `results/`. Results and interpretation: DEC-025.
+
+## Next arms (proposed, not scheduled)
+
+A follow-up should test delivery before the first response, on T1 and T3 only
+(T2 was at floor), with about k=6:
+
+- **E**: the same boundary text as `.claude/rules/*.md` without `paths`, which
+  loads at launch.
+- **F**: PreToolUse returns `permissionDecision: "deny"` with the boundaries as
+  the reason, for every Write/Edit under a spec'd module, until one
+  `PostToolBatch` has passed. A deny on the first call alone lets the rest of
+  that response through.
+
+Pursue a delivery change only if E or F brings T1 to 2/6 or fewer (B was 6/6
+across screen and pilot). Record over-application too: duplicated logic,
+wrappers, completion.
+
+## Passive monitoring
+
+Between experiments, `.claude/wyx-drift-history.jsonl` in each project gives a
+cheap regression alarm: compare the `critical` count per `detect` entry before
+and after a wyx release. It counts standing violations at scan time, not the
+per-edit violation rate, and critical findings are rare (pre-v0.27.0 they
+appeared in 3 of 102 yorisen scans and 3 of 29 aofuda scans), so treat a jump
+as a signal to investigate,
+never as a measurement.
+
 ## Out of scope
 
 Drift-detection quality, `/wyx:map` output, and developer experience. This

@@ -6,27 +6,23 @@
 
 ```mermaid
 graph LR
-    A["You write CONCEPT.md<br/>## dependencies<br/>- Orders: read-only via getOrderTotal()"] -->|"wyx hook fires<br/>on edits near the spec"| B["Claude sees boundaries<br/>before writing code"]
-    B --> C["Claude uses getOrderTotal()<br/>via service API ✅"]
-    B -.->|"without wyx"| D["Claude imports findOrder()<br/>from orders/repository ❌"]
-
-    style C fill:#2d6a2d,color:#fff
-    style D fill:#8b1a1a,color:#fff
+    A["You write CONCEPT.md<br/>## dependencies<br/>- Orders: read-only via getOrderTotal()"] -->|"wyx hook fires<br/>on edits near the spec"| B["Claude gets the boundaries<br/>with each edit's result"]
+    B --> C["Claude can check its next steps<br/>against the declared API"]
 ```
 
-## What it looks like
+## What a boundary violation looks like
 
 ```diff
-# Without wyx — Claude reaches into module internals
+# Reaches into Orders internals
 - import { findOrder } from "../orders/repository"
 
-# With wyx — Claude uses the declared service API
+# Uses the declared Orders API
 + import { getOrderTotal } from "../orders/service"
 ```
 
-You write a short spec describing your module boundaries. wyx injects those boundaries into Claude's context before and after every edit near the spec — Claude sees them before each edit and gets a dependency reminder after.
+You write a short spec describing your module boundaries. wyx adds those boundaries to Claude's context each time Claude edits a file near the spec. Claude Code delivers them together with that edit's result, so Claude reads them after the edit is written and can apply them to its next steps. A dependency reminder follows each edit.
 
-**In testing (N=6 features, 2 projects, pre-PostToolUse build):** 33 cross-module imports checked, 0 violations. Small sample — see [methodology](#test-results-and-methodology) for caveats. Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
+**Evidence so far is thin.** An early before/after test (N=6 features) saw 0 violations in 33 cross-module imports; a later concurrent pilot (27 runs, 2026) found no detectable difference with or without wyx under deliberate pressure — see [methodology](#test-results-and-methodology). Drift detection also caught a **silent data loss bug** — an SQL UPDATE that was missing 2 of 5 fields.
 
 ## Install
 
@@ -53,7 +49,7 @@ Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support a
 - Orders: read-only via getOrderTotal()
 ```
 
-**2. wyx injects it automatically.** Whenever Claude writes or edits a file near this spec, the PreToolUse hook injects the boundary declarations (`## interactions`, `## dependencies`) into Claude's context before the edit. After the edit, the PostToolUse hook reinjects the dependency list as a focused reminder — catching violations that slip through during multi-file sequences.
+**2. wyx injects it automatically.** Whenever Claude writes or edits a file near this spec, the PreToolUse hook adds the boundary declarations (`## interactions`, `## dependencies`) to Claude's context. The hook runs before the edit is applied, but Claude receives its output with the edit's result, so the edit that triggered it — and any other edits in the same response — are written without it. After the edit, the PostToolUse hook adds the dependency list as a reminder.
 
 **3. Drift detection catches divergence.** Run `/wyx:concept drift` to find where code has drifted from specs:
 
@@ -82,12 +78,12 @@ Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support a
 
 | | CLAUDE.md, nested CLAUDE.md, `.claude/rules/` | wyx |
 |---|---|---|
-| **Delivery** | At launch: CLAUDE.md from the working directory up, and rules without `paths`. On read: nested CLAUDE.md and path-scoped rules for the file Claude reads | Before and after each write near a spec |
+| **Delivery** | At launch: CLAUDE.md from the working directory up, and rules without `paths`. On read: nested CLAUDE.md and path-scoped rules for the file Claude reads (path-scoped rules load only via the Read tool; `cat` through Bash does not load them) | After each write near a spec, delivered with the write's result |
 | **Format** | Free-form instructions for Claude | Structured spec (purpose, state, actions, boundaries) that people review too |
 | **Staleness** | No check against the code | Drift detection compares spec and code |
 | **Colocation** | Nested CLAUDE.md sits in its directory; `.claude/rules/` usually at the project root | Next to the code it describes |
 
-All of these rely on Claude choosing to comply. Nested CLAUDE.md and path-scoped rules already give Claude module-specific context when it reads a file; wyx adds a reminder at the moment of each write, a spec format that doubles as design documentation, and drift detection. Whether wyx improves compliance over read-time loading has not been measured; [docs/evaluation-protocol.md](docs/evaluation-protocol.md) includes an arm that compares wyx as shipped with the same boundary sections loaded natively.
+All of these rely on Claude choosing to comply. Nested CLAUDE.md and path-scoped rules already give Claude module-specific context when it reads a file; wyx adds a reminder after each write, a spec format that doubles as design documentation, and drift detection. Pilot-01 compared wyx with the same boundary sections loaded as path-scoped rules and found no detectable difference; in most runs neither reached Claude before its first edit (see Test results).
 
 ## Skills
 
@@ -190,6 +186,8 @@ Additional findings:
 - Concept specs identified **4 test gaps** that human test writers had missed
 - **8/8 skill tests passed** across both projects. Drift detection found 3 defects, 1 DRY violation, and 1 undocumented cross-concept dependency.
 
+**Pilot-01 (2026-09, concurrent A/B, descriptive).** 27 runs of claude-opus-5-5 (effort high, Claude Code 2.1.281) on a 17-file fixture: 3 tasks × 3 arms × 3 runs. B had the specs only, C had wyx v0.27.0, and D had the same boundary sections as path-scoped `.claude/rules/`. Every task combined two pressures: an existing reach-in in the file being edited, and a prompt asking to keep a hotfix inside one module to avoid another team's review (with at most one of the two, specs-only runs made no reach-in in 9 design runs). The outcome was whether the final code gained a runtime import of another module's repository. Violations: B 6/9, C 5/9, D 4/9 (T1 3/3, 3/3, 2/3; T2 0/3, 0/3, 1/3; T3 3/3, 2/3, 1/3). No difference between arms could be detected; at this size only differences of about 55 percentage points are visible, so the pilot neither shows nor rules out a smaller effect. Every run read CONCEPT.md before its first edit, and every violating run said it had crossed the boundary, so the pilot tested whether wyx changes a deliberate trade-off, not whether it prevents accidental reach-ins. In all 9 wyx runs Claude wrote its whole code change in one response, before any boundary injection reached it (only wyx's session-start summary and skill listings came earlier), and no wyx run changed its code afterwards. Path-scoped rules reached Claude before its first edit in 2 of 9 runs, because they load only when Claude uses the Read tool and most runs read files with `cat`. One model, one small fixture, and the maintainer's own global configuration in every arm. Harness and full report: [wyx-example/eval/pilot-01](https://github.com/jlifyio/wyx-example/tree/main/eval/pilot-01); decision: DEC-025.
+
 </details>
 
 <details>
@@ -217,7 +215,7 @@ CLAUDE_PROJECT_DIR=/path/to/project bash scripts/session-start.sh
 wyx warns at session start. Install from [jqlang.github.io](https://jqlang.github.io/jq/download/). Without jq, boundary injection is disabled.
 
 **Q: Does wyx block bad code?**
-No. wyx injects boundary context before and after each edit — Claude sees it and self-checks. It's advisory, not enforcement. In testing with Opus-class models, compliance was consistent. If you need a deterministic check, run an import checker (for example dependency-cruiser or import-linter) as your own PostToolUse hook: it reports violations to Claude right after each write (it cannot undo the write) and works alongside wyx.
+No. wyx adds boundary context after each edit near a spec, and Claude can check its later steps against it. It is advisory and arrives after the edit that triggers it. In pilot-01, under pressure to keep a hotfix inside one module, the pilot found no detectable difference in whether Claude imported another module's repository (5 of 9 runs with wyx, 6 of 9 without; only differences of about 55 points are visible at that size). If you need a deterministic check, run an import checker (for example dependency-cruiser or import-linter) as your own PostToolUse hook: it reports violations to Claude right after each write (it cannot undo the write) and works alongside wyx.
 
 **Q: Does wyx catch writes via Bash (`echo > file`, `sed -i`)?**
 No. The hook matches Write, Edit, and NotebookEdit only. File modifications through Bash — or through MCP file-write tools (`mcp__server__*`) — bypass the hook entirely.
