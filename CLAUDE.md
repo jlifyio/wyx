@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**wyx** is a Claude Code plugin that provides architecture guardrails for LLM-assisted development. The core mechanism: when Claude writes code near a module with a spec, the PreToolUse hook automatically injects boundary declarations into Claude's context, reducing cross-module violations.
+**wyx** is a Claude Code plugin that provides architecture guardrails for LLM-assisted development. The core mechanism: when Claude writes code near a module with a spec, the PreToolUse hook adds boundary declarations to Claude's context with the edit's result, intended to reduce cross-module violations (pilot-01: no measurable reduction — DEC-025).
 
 Adapts ideas from **WYSIWID** (Meng & Jackson, MIT): the concept spec format and the concept/sync vocabulary. The injected boundary sections, calls between concepts, documentation-only syncs and the absence of a runtime are wyx's own departures — README §Background and DEC-022 record them. WYWIWID (Dr. Ernie) is cited as see-also only (DEC-022).
 
@@ -49,7 +49,7 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 
 **PreToolUse** (command, matcher: `Write|Edit|NotebookEdit`): When writing near a spec file, outputs boundary declarations via `hookSpecificOutput.additionalContext`. Extracts `## purpose` from all co-located specs (CONCEPT/PIPELINE/SYNCS) for the spec listing, plus boundary declarations: `## interactions` and `## dependencies` from CONCEPT.md, and `## data boundary` from PIPELINE.md. (Traversal rule: Key Constraints.) Resolves relative file paths to absolute. Handles both `file_path` (Write/Edit) and `notebook_path` (NotebookEdit) via jq fallback chain. Skips inert files (`.json`, `.jsonl`, `.lock`, `.log`, `.txt`) — no context injection for non-code files. Handles CRLF line endings via `tr -d '\r'` in extract_section. Enables LLM self-checking against declared boundaries. **This is the core differentiator of wyx** — concept specs are the fuel, this hook is the engine.
 
-**PostToolUse** (command, matcher: `Write|Edit|NotebookEdit`): After a file edit near a CONCEPT.md, reinjects the `## dependencies` list as a focused reminder. Complements PreToolUse: PreToolUse provides full boundary context before the edit (guidance), PostToolUse provides the dependency list after (verification prompt). Walks upward to find the nearest CONCEPT.md only (not PIPELINE.md or SYNCS.md — they lack dependency lists). Silent when: no spec found, no `## dependencies` section, editing inert files, or editing spec files themselves. Language-agnostic, no import parsing. Design principle: **hooks extract and inject; the LLM judges**.
+**PostToolUse** (command, matcher: `Write|Edit|NotebookEdit`): After a file edit near a CONCEPT.md, reinjects the `## dependencies` list as a focused reminder. Complements PreToolUse; both reach Claude with the edit's result, never before the edit that triggers them (DEC-025): PreToolUse carries the full boundary context, PostToolUse the dependency list. Walks upward to find the nearest CONCEPT.md only (not PIPELINE.md or SYNCS.md — they lack dependency lists). Silent when: no spec found, no `## dependencies` section, editing inert files, or editing spec files themselves. Language-agnostic, no import parsing. Design principle: **hooks extract and inject; the LLM judges**.
 
 ### Key Constraints
 
@@ -178,19 +178,19 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **Matcher coverage**: PreToolUse matches `Write|Edit|NotebookEdit`. File writes via `Bash` (e.g. `echo > file`, `sed -i`) or via MCP file-write tools (`mcp__server__*`) bypass the hook entirely.
 - **Harness tool availability**: Skills declare `Glob`/`Grep` in `allowed-tools`, but some harnesses expose neither. `/wyx:audit` falls back to read-only shell discovery in that case (DEC-019); `/wyx:map` already lists `Bash`. `/wyx:pipeline` and `/wyx:sync` *Discovery* mode (no-arg) still depend on Glob and degrade to path-given modes there; `/wyx:concept` Discovery escapes via its `Agent` tool.
 - **Spec heading format**: Some projects use capitalized headings (`## Purpose`, `## Actions`); others use lowercase (`## purpose`, `## actions`). The drift context hook handles both via fallback extraction.
-- **PreToolUse context delivery**: Uses `hookSpecificOutput.additionalContext` (structured JSON) per the official hooks reference. Boundary declarations are delivered in full without truncation — completeness is prioritized over context savings.
+- **Delivery timing and size**: `hookSpecificOutput.additionalContext` is added next to the tool result, so the triggering edit and every other tool call in the same response are written without it (DEC-025). wyx never trims boundaries, but Claude Code moves any context over 10,000 characters into a file and passes a 2,000-character preview.
 - **Stale spec risk**: Outdated or incorrect specs can be worse than no specs — the hook injects boundary declarations verbatim without validation, which may guide Claude away from correct approaches toward spec-declared-but-nonexistent APIs. Run `/wyx:concept drift` regularly to catch divergence.
 - **Claude-only testing**: All testing used Claude. Other LLMs may respond differently to CONCEPT.md specs.
 
 ## Documentation
 
-- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-024). Check before making architectural changes.
+- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-025). Check before making architectural changes.
 - `docs/evaluation-protocol.md` — Concurrent A/B protocol for re-measuring boundary-violation rates (DEC-022).
 
 ## Design Decisions
 
 - **Hook type: command only** — prompt hooks lack spec access, agent hooks add 10-30s latency. Command hooks extract boundaries in ~2s.
-- **No truncation**: Boundary declarations delivered in full — incomplete boundaries defeat boundary checking.
+- **No truncation**: wyx never trims boundary declarations — incomplete boundaries defeat boundary checking (Claude Code's own 10,000-character cap still applies; see Known Limitations).
 - **No qualification, no shouting**: Boundary declarations are injected without caveats like "these might be stale" — qualified boundaries defeat boundary checking (same principle as no truncation). The instructions wrapped around them give the reason and carry no capitalised NEVER/MUST (rationale: DEC-024; `scripts/check-rules.sh` checks the per-edit hooks it lists).
 - **Drift stays in `/wyx:concept`**: `/wyx:concept drift` checks all 3 spec types (CONCEPT, PIPELINE, SYNCS) including cross-spec reference validation and SYNCS graph consistency. Extracting into a separate `/wyx:drift` skill was deferred — no functional conflict yet.
 - **Read-only subagents only**: Concept drift and map generation use Explore-type subagents (structurally read-only — Write/Edit unavailable) for parallel scanning. Audit uses direct Glob+Grep (no subagents — YAGNI at current scale, and subagent Bash commands caused approval fatigue); when a harness exposes no Glob/Grep tools, audit falls back to read-only shell (Bash `find`/`ls`/`grep -r`) for discovery only — never for writes, preserving the read-only invariant (DEC-019). Full plugin agents remain excluded.
@@ -198,9 +198,9 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **No SYNCS.md splitting**: The `## coordination graph` requires a complete view of all sync flows; partial graphs give false confidence.
 - **Audit is discovery-only**: `/wyx:audit` scans and reports but does not generate specs or check staleness (defers to `/wyx:concept drift` for semantic analysis — mtime-based staleness produced 100% false positives in testing). A full orchestrator was rejected (3-agent debate) for context window exhaustion, template drift, and quality degradation.
 - **Integration is a platform constraint**: The 5 skills operate independently (no skill-to-skill invocation in Claude Code). This is structural, not a bug.
-- **No auto-invocation rules**: CLAUDE.md rules telling users to "check specs before imports" are redundant — the PreToolUse hook does this automatically.
+- **No auto-invocation rules**: wyx adds no CLAUDE.md rules of its own; its hooks deliver boundaries after each edit (DEC-025), and whether launch-time rules do better is untested (evaluation protocol, arm E).
 - **PostToolUse = context reinforcement, not import checking**: PostToolUse reinjects the dependency list only — no import parsing, no language-specific code. Previous proposals for mechanical import checking were rejected (3-agent debate): concept-name-to-import-path mapping has no clean bash solution, and language-specific code violates wyx's language-agnostic principle. Architectural rule: **hooks extract and inject; the LLM judges**.
-- **PostToolUse "contradictory signals" overturned**: The v0.20.0/v0.21.0 rejection was withdrawn (3-agent debate). PreToolUse=guidance, PostToolUse=verification is complementary, not contradictory. The previous DA attacked the concept instead of the mechanism.
+- **PostToolUse "contradictory signals" overturned**: The v0.20.0/v0.21.0 rejection was withdrawn (3-agent debate). PreToolUse=guidance, PostToolUse=verification is complementary, not contradictory (both arrive after the edit — DEC-025). The previous DA attacked the concept instead of the mechanism.
 
 ## Test Results
 
