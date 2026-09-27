@@ -684,7 +684,7 @@ The README said "Claude sees them before each edit" and "Claude sees boundaries 
 1. **Correct the claims** (documentation only; no hook behaviour changes): README (diagram, delivery paragraph, How it works, comparison table, FAQ), CLAUDE.md (overview, PostToolUse, Known Limitations, No truncation, No auto-invocation), the concept skill's authoring note and two hook header comments now say the boundaries arrive with the edit's result. The with/without-wyx illustration becomes an illustration of a violation; the README test results gain a pilot-01 addendum, and the above-the-fold line now opens with "Evidence so far is thin" — amending DEC-005's lead-with-the-numbers framing and replacing DEC-022 item 4's "pre-PostToolUse build" qualifier there.
 2. **Do not run the pre-registered main study** of wyx as shipped. Recomputed from the observed rates it needs about 302 runs per arm, for a mechanism that cannot act on the first response.
 3. **Record as untested, not as where wyx's value lies:** spec existence (no no-spec arm), drift detection, and repositories where Claude does not read the spec unprompted.
-4. **Any follow-up tests delivery before the first response** (evaluation protocol, "Next arms"): boundary rules loaded at launch (E) and a PreToolUse deny that holds every edit under a spec'd module until one batch has passed, with the boundaries as the reason (F). It is not scheduled; it waits on the owner's product decision below.
+4. **Any follow-up tests delivery before the first response** (evaluation protocol, "Next arms"): boundary rules loaded at launch (E) and a PreToolUse deny that holds every edit under a spec'd module until one batch has passed, with the boundaries as the reason (F). It is not scheduled; it waits on the owner's product decision below. *(Status note 2026-09-27: answered by DEC-026 — F rejected; E run as pilot-02, results in DEC-027.)*
 
 ### Alternatives Considered
 - **Run the main study anyway** (the report's mechanical GO): Rejected — cost without a plausible mechanism.
@@ -694,6 +694,64 @@ The README said "Claude sees them before each edit" and "Claude sees boundaries 
 
 ### Consequences
 - wyx's documented mechanism shrinks to what the platform does: boundaries arrive with each edit's result and can shape later steps. DEC-014's premise that PreToolUse guides before the edit and PostToolUse verifies after it is corrected; both arrive after.
-- Open product question for the owner: should wyx try to override a user's explicit scope preference? Every violating run surfaced its crossing; an F-style deny would change wyx from advisory to blocking and needs per-session state (DEC-021).
+- Open product question for the owner: should wyx try to override a user's explicit scope preference? Every violating run surfaced its crossing; an F-style deny would change wyx from advisory to blocking and needs per-session state (DEC-021). *(Answered by DEC-026.)*
 - Design screen spend: 18 Opus runs ($11.56 notional) ran without prior approval; recorded here so the pilot's full cost ($27.94 notional incl. probes) is visible.
 - Launch-era drafts removed from the published tree into the local archive (DEC-024 note).
+
+---
+
+## DEC-026: wyx Stays Advisory — an Explicit User Instruction Wins; Test Only Launch-Loaded Rules (E)
+
+**Date:** 2026-09-26
+**Status:** Accepted
+**Source:** The open product question in DEC-025 (Consequences), answered by the owner on 2026-09-26; evaluation protocol, "Next arms" (now "Pilot-02 and next steps")
+
+### Context
+DEC-025 left one question to the owner: should wyx try to override a user's explicit scope preference? In pilot-01 every violation was a deliberate trade-off that answered the user's own request to keep a hotfix inside one module, and every violating run said it had crossed the boundary. The protocol proposed two follow-up arms that deliver boundaries before the first response: E, the same boundary sections as `.claude/rules/` files without `paths` (loaded at launch; still advisory; it changes the timing and also the instruction channel and the scope), and F, a PreToolUse deny that holds every edit under a spec'd module until one batch has passed (blocking, with per-session state — DEC-021).
+
+### Decision
+1. **wyx stays advisory.** Boundaries inform Claude; they do not override an explicit instruction from the user. A crossing the user asked for, and that Claude surfaced, is an accepted outcome.
+2. **F is rejected.** Holding edits turns wyx into enforcement, needs per-session state, and would work against the user's own scope choice — the situation every pilot-01 violation came from.
+3. **Test E only, as pilot-02**: B vs E, T1 and T3, 4 runs per cell (16 runs plus 2 probes), with the decision rule written into `wyx-example/eval/pilot-02/README.md` before any run. That pre-registration also fixes what a result can justify: "A 'promising' result only justifies a properly powered study, never a change to wyx by itself." *(Results: DEC-027.)*
+
+### Alternatives Considered
+- **F (deny until one batch has passed)**: Rejected — see Decision 2. Users who want a hard stop can run an import checker as their own hook (README FAQ).
+- **Test E and F together**: Rejected — testing F only makes sense if wyx might ship it.
+- **No follow-up at all**: Rejected — E is the cheapest test of whether boundaries loaded at launch change the outcome, at about $10.
+
+### Consequences
+- The README FAQ's "advisory" answer is now the documented product stance, not only a description of the mechanism.
+- The protocol's "Next arms" section becomes "Pilot-02 and next steps"; it drops F and points to pilot-02.
+
+---
+
+## DEC-027: Pilot-02 — Launch-Loaded Rules Flipped the Trade-off in One Fixture; Offer Them as the User's Choice
+
+**Date:** 2026-09-27
+**Status:** Accepted
+**Source:** Pilot-02 — harness `jlifyio/wyx-example` `eval/pilot-01` with `PILOT_CONFIG=eval/pilot-02/config.env` (harness 862be4c–ca5be62, pre-registration ca5be62 committed before any run, results a8ee6ac); a blind relabel, a rerun of the frozen scorer, a disclosure audit and two adversarial reviews run in the analysis session and not published; the owner's choice on 2026-09-27
+
+### Context
+Pilot-02 ran DEC-026's arm E: B (specs only) against E (the same boundary sections also as `.claude/rules/*.md` without `paths`), tasks T1 and T3, 4 runs per cell, claude-opus-5-5, Claude Code 2.1.281, the owner's global configuration in both arms. All three E rules loaded at `session_start`, 3–5 seconds before the first assistant message, in 8/8 E runs; no B run loaded a rule; isolation held in 16/16.
+
+Results — new repository reach-ins: **B 7/8, E 0/8** (T1 4/4 vs 0/4, T3 3/4 vs 0/4). The pre-registered rule is met. A blind relabel and a rerun of the frozen scorer agreed 16/16. The post-run review found what the primary outcome does not count:
+1. **The trade-off flipped.** The fixture offers two complete solutions — reach in and stay in scope, or add a public function to the other module and trigger its team's review. Every E run edited the module the prompt asked to avoid (8/8, against 1/8 in B) and so incurred the delay the user wanted to avoid. Every run in both arms said which choice it made. The summary of every E run led with the other team's review and offered an alternative: the reach-in (5), a partial or split release (2) or leaving the feature out (1).
+2. **Ranking, not awareness.** All 8 B runs read the same text in CONCEPT.md before their first edit, and all 7 violating B runs named the rule they broke.
+3. **Not boundary-clean.** At least one pre-existing reach-in stayed in each of the 8 E trees. The 4 T1 E runs rewrote Payments' "Orders: read-only" dependency to permit the new write, and the 4 T3 E runs added a dependency; the rule copies stayed unchanged, so they no longer matched the specs (B changed a dependency line in 4/8).
+4. **Cause not separated.** E bundles launch timing, the project-instruction channel, position before the prompt, repetition of text already in CONCEPT.md, excerpted "does not import them" wording and all-module scope. Pilot-01's unplanned D subgroups lean towards the channel mattering even without launch timing (n=2 early, n=3 late).
+
+### Decision
+1. **wyx's behaviour does not change** (DEC-026: advisory; the pre-registration: a promising result is never a change to wyx by itself).
+2. **The README offers launch-loaded rules as the user's choice**: in pilot-02, boundary sections copied into `.claude/rules/` without `paths` were followed by Claude ranking the import rules above a scope request, at the cost of edits to the other module and its review. The README states the evidence size, the cost, and that wyx neither generates these copies nor checks them for drift. This documents a user-side option; wyx itself does not change.
+3. **No follow-up is scheduled.** If launch-time delivery is ever considered for wyx itself, the next study must separate timing, channel, position, repetition, wording and scope, and score the out-of-scope edit alongside the reach-in.
+
+### Alternatives Considered
+- **Record only**: Rejected by the owner — users who want the boundaries to win should know the lever exists and what it costs.
+- **Plan the factor-separating study now**: Deferred — nothing in wyx depends on it while launch-time delivery stays a user choice.
+- **An opt-in skill that generates the rules from the specs**: Rejected — the pre-registration rules out a change to wyx on this evidence, and generated copies would add a drift surface wyx does not check.
+
+### Consequences
+- DEC-026's "an explicit user instruction wins" holds for wyx itself; a user who adopts the rules chooses the other ranking.
+- The README comparison paragraph, pilot-02 test results and FAQ describe the lever; CLAUDE.md's "No auto-invocation rules" now points here.
+- Rules copied from CONCEPT.md go stale when the spec changes; `/wyx:concept drift` does not compare `.claude/rules/` copies with the specs.
+- Pilot cost: $9.35 for 16 scored runs plus 4 Haiku probes ($0.20); a first batch launched no run because `~/.claude/settings.json` changed between setup and the batch.
