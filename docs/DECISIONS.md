@@ -556,7 +556,7 @@ A four-agent review of the shipped plugin surfaced two framing/behavior issues d
 ## DEC-022: Honest Lineage and Evidence Framing — WYSIWID Differences, Citation Fixes, Concurrent A/B Protocol
 
 **Date:** 2026-09-24
-**Status:** Accepted
+**Status:** Accepted; item 4's above-the-fold qualifier replaced by DEC-025
 **Source:** External review of v0.26.1 (lineage, citations, measurement), verified against primary sources: Meng & Jackson 2025 (arXiv 2508.14511v2, full text), Jackson's blog post of 2025-08-31 (essenceofsoftware.com/posts/wysiwid), Meng et al. 2026 (arXiv 2606.11051v1), the WYWIWID post (ihack.us, 2025-11-13), the MIT 6.1040 Fall 2025 `conceptbox` starter kit, and the `v0.16.0` tag (`git show v0.16.0:README.md`, `v0.16.0:hooks/hooks.json`)
 
 ### Context
@@ -632,7 +632,7 @@ DEC-010 froze hook expansion absent (1) a new Claude Code platform capability or
 ## DEC-024: Calm Injected Wording for Current Claude Models
 
 **Date:** 2026-09-24
-**Status:** Accepted
+**Status:** Accepted; the per-write timing it left unmeasured is settled by DEC-025 (the context arrives with the edit's result)
 **Source:** Owner question after DEC-022/023 ("could it be too strict?"), checked against Anthropic's prompting best-practices guide (platform.claude.com, fetched 2026-09-24) and the injected text in `scripts/drift-context.sh` / `scripts/post-check.sh`
 
 ### Context
@@ -684,7 +684,7 @@ The README said "Claude sees them before each edit" and "Claude sees boundaries 
 1. **Correct the claims** (documentation only; no hook behaviour changes): README (diagram, delivery paragraph, How it works, comparison table, FAQ), CLAUDE.md (overview, PostToolUse, Known Limitations, No truncation, No auto-invocation), the concept skill's authoring note and two hook header comments now say the boundaries arrive with the edit's result. The with/without-wyx illustration becomes an illustration of a violation; the README test results gain a pilot-01 addendum, and the above-the-fold line now opens with "Evidence so far is thin" — amending DEC-005's lead-with-the-numbers framing and replacing DEC-022 item 4's "pre-PostToolUse build" qualifier there.
 2. **Do not run the pre-registered main study** of wyx as shipped. Recomputed from the observed rates it needs about 302 runs per arm, for a mechanism that cannot act on the first response.
 3. **Record as untested, not as where wyx's value lies:** spec existence (no no-spec arm), drift detection, and repositories where Claude does not read the spec unprompted.
-4. **Any follow-up tests delivery before the first response** (evaluation protocol, "Next arms"): boundary rules loaded at launch (E) and a PreToolUse deny that holds every edit under a spec'd module until one batch has passed, with the boundaries as the reason (F). It is not scheduled; it waits on the owner's product decision below. *(Status note 2026-09-27: answered by DEC-026 — F rejected; E run as pilot-02, results in DEC-027.)*
+4. **Any follow-up tests delivery before the first response** (evaluation protocol, "Next arms", now "Pilot-02 and next steps"): boundary rules loaded at launch (E) and a PreToolUse deny that holds every edit under a spec'd module until one batch has passed, with the boundaries as the reason (F). It is not scheduled; it waits on the owner's product decision below. *(Status note 2026-09-27: answered by DEC-026 — F rejected; E run as pilot-02, results in DEC-027.)*
 
 ### Alternatives Considered
 - **Run the main study anyway** (the report's mechanical GO): Rejected — cost without a plausible mechanism.
@@ -722,6 +722,7 @@ DEC-025 left one question to the owner: should wyx try to override a user's expl
 ### Consequences
 - The README FAQ's "advisory" answer is now the documented product stance, not only a description of the mechanism.
 - The protocol's "Next arms" section becomes "Pilot-02 and next steps"; it drops F and points to pilot-02.
+- `scripts/check-rules.sh` ("hooks stay advisory") fails if a handler in hooks/hooks.json is not a quoted `bash "${CLAUDE_PLUGIN_ROOT}/<path>.sh"` command, if plugin.json declares hooks, or if hooks.json or those scripts contain a blocking or overriding output (a permission decision, a block decision, `continue: false`, updatedInput / updatedToolOutput), an `exit` other than 0 or 1, or a control byte. An implicit exit 2 and files those scripts source stay unchecked.
 
 ---
 

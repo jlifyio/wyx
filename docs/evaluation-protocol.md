@@ -134,7 +134,8 @@ Confirm each arm's condition actually reached Claude before judging it:
   code in one response; in pilot-01 all 9 C runs did.
 - **Path-scoped rules (D)**: they load only when Claude uses the Read tool on a
   matching file. `cat` through Bash and Write/Edit do not load them, and the
-  pilot's runs exposed no Glob/Grep tools, so most read files with `cat`.
+  pilot's runs exposed no Glob/Grep tools, and most read files with `cat`
+  (observed on Claude Code 2.1.281).
   Log `InstructionsLoaded` and compare its timestamps with the first edit.
 - **Launch rules (E)**: an `InstructionsLoaded` entry with `load_reason:
   session_start` for each rule, timestamped before the first assistant
@@ -152,7 +153,8 @@ with the full report under `results/`. Results and interpretation: DEC-025.
 DEC-026 keeps wyx advisory and rejects F, a PreToolUse deny that would hold
 every edit under a spec'd module. Pilot-02 ran the one follow-up, **E**: the
 same boundary text as `.claude/rules/*.md` without `paths`, which loads at
-launch; B vs E on T1 and T3, 4 runs per cell, decision rule pre-registered in
+launch; B vs E on T1 and T3, 4 runs per cell (below k ≥ 5; descriptive
+only), decision rule pre-registered in
 [wyx-example/eval/pilot-02](https://github.com/jlifyio/wyx-example/tree/main/eval/pilot-02).
 New repository reach-ins: B 7/8, E 0/8; but every E run edited the module
 the prompt asked to avoid (8/8 vs 1/8), an outcome the primary did not score.
