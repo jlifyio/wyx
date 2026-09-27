@@ -1,5 +1,6 @@
 #!/bin/bash
-# Rule gate — structural enforcement for the rules in CLAUDE.md that admit it.
+# Rule gate — structural enforcement for the rules in CLAUDE.md and
+# docs/DECISIONS.md that admit it.
 # Wired via workflow-kit.config.json `gates.rules`, so `closing` Phase 1 runs it
 # on every release. Run it directly during development:
 #
@@ -199,6 +200,109 @@ if [ "$calm_hits" -ne 0 ]; then
 fi
 if [ "$calm_err" -eq 0 ] && [ "$calm_hits" -eq 0 ]; then
     printf '  OK: injected hook text carries no capitalised prohibitions.\n'
+fi
+
+# --- Rule: hooks stay advisory ------------------------------------------------
+#
+# docs/DECISIONS.md -> DEC-026 decisions 1-2: wyx stays advisory so an explicit
+# user instruction wins, and the rejected F would have blocked edits. A hook
+# blocks or overrides through a permission decision, a block decision,
+# `continue: false`, updatedInput / updatedToolOutput or exit status 2, and a
+# prompt or agent hook can deny on its own. So:
+#   1. every handler in hooks/hooks.json is a command hook written exactly as
+#      bash "${CLAUDE_PLUGIN_ROOT}/<path>.sh" (the quoted form CLAUDE.md
+#      requires), and plugin.json declares no hooks: any other handler is one
+#      this scan cannot follow, and fails;
+#   2. neither hooks.json nor those scripts contain those outputs, and every
+#      `exit` in them is a literal `exit 0` or `exit 1`;
+#   3. none of those files holds a NUL, CR or other control byte (bash drops a
+#      NUL while reading a script, so ex<NUL>it 2 runs as exit 2 unseen).
+# Full-line comments are skipped so a script may explain why it does not block;
+# unlike the calm check above, a `#` line inside a JSON string cannot carry a
+# blocking output. Residual (accepted): an implicit exit 2 (a failing command
+# under set -e, a builtin usage error), a file those scripts source, and text
+# assembled at run time ("permission" + "Decision").
+printf -- '--- hooks stay advisory ---\n'
+adv_err=0
+adv_hits=0
+adv_files=""
+if ! command -v jq >/dev/null 2>&1; then
+    echo "  SCAN ERROR: jq not found — hooks/hooks.json was not parsed."
+    adv_err=1
+elif [ ! -f hooks/hooks.json ]; then
+    echo "  MISSING SCAN ROOT: hooks/hooks.json — an eroded scope reports clean."
+    adv_err=1
+else
+    # Claude Code loads hooks declared in plugin.json together with hooks.json.
+    rc=0
+    pj_hooks=$(jq -r 'has("hooks")' .claude-plugin/plugin.json) || rc=$?
+    if [ "$rc" -ne 0 ]; then
+        printf '  SCAN ERROR: .claude-plugin/plugin.json — jq exited %d.\n' "$rc"
+        adv_err=1
+    elif [ "$pj_hooks" != false ]; then
+        echo "  UNSCANNED HOOK: .claude-plugin/plugin.json declares hooks — keep every hook in hooks/hooks.json."
+        adv_err=1
+    fi
+    # A changed structure makes jq fail, which is reported rather than skipped.
+    rc=0
+    handlers=$(jq -r '.hooks[][].hooks[] | [(.type // "-"), (.command // "-")] | @tsv' hooks/hooks.json) || rc=$?
+    if [ "$rc" -ne 0 ] || [ -z "$handlers" ]; then
+        printf '  SCOPE ERROR: no hook handlers parsed from hooks/hooks.json (jq exited %d).\n' "$rc"
+        adv_err=1
+    else
+        # A regex in a variable is the form bash 3.2 and 4+ both accept for =~.
+        cmd_re='^bash "\$\{CLAUDE_PLUGIN_ROOT\}/([A-Za-z0-9_][A-Za-z0-9_./-]*\.sh)"$'
+        hook_scripts=""
+        while IFS=$'\t' read -r htype hcmd; do
+            if [ "$htype" = command ] && [[ "$hcmd" =~ $cmd_re ]]; then
+                hook_scripts="${hook_scripts}${BASH_REMATCH[1]}"$'\n'
+            else
+                printf '  UNSCANNED HOOK: type=%s command=%s\n' "$htype" "$hcmd"
+                adv_err=1
+            fi
+        done <<< "$handlers"
+        adv_files="hooks/hooks.json $(sort -u <<< "$hook_scripts")"
+    fi
+fi
+for f in $adv_files; do
+    if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+        echo "  MISSING SCAN ROOT: $f — hooks.json runs it but it cannot be read."
+        adv_err=1; continue
+    fi
+    # pipefail carries a tr failure into the verdict, so it fails closed.
+    if ! LC_ALL=C tr -d '\000-\010\013-\037\177' < "$f" | cmp -s - "$f"; then
+        echo "  CONTROL BYTE: $f holds a NUL, CR or other control byte that can hide output from this scan."
+        adv_err=1; continue
+    fi
+    # One grep and no pipe, so its own status is the verdict: 1 is clean,
+    # 2+ means the file was not scanned. awk below only filters its output.
+    rc=0
+    hits=$(/usr/bin/grep -a -n -E 'permissionDecision|updatedInput|updatedToolOutput|\b[Dd]ecision\b|continue[\\"]*[[:space:]]*:|[.$]continue\b|\bexit\b' "$f") || rc=$?
+    if [ "$rc" -gt 1 ]; then
+        printf '  SCAN ERROR: %s — grep exited %d.\n' "$f" "$rc"
+        adv_err=1; continue
+    fi
+    # Drop full-line comments and the allowed `exit 0` / `exit 1`; any line
+    # still holding an exit or a blocking output is reported.
+    code_hits=$(awk '{
+        l = $0; sub(/^[0-9]+:/, "", l)
+        if (l ~ /^[[:space:]]*#/) next
+        t = " " l " "
+        gsub(/[^A-Za-z0-9_]exit[[:space:]]+[01][^A-Za-z0-9_]/, " ", t)
+        if (t ~ /[^A-Za-z0-9_]exit[^A-Za-z0-9_]/ || t ~ /permissionDecision|updatedInput|updatedToolOutput|[^A-Za-z0-9_][Dd]ecision[^A-Za-z0-9_]|continue[\\"]*[[:space:]]*:|[.$]continue[^A-Za-z0-9_]/) print
+    }' <<< "$hits")
+    if [ -n "$code_hits" ]; then
+        printf '%s\n' "$code_hits" | sed "s|^|  BLOCKING: $f:|"
+        adv_hits=1
+    fi
+done
+[ "$adv_err" -eq 0 ] || fail=$((fail + 1))
+if [ "$adv_hits" -ne 0 ]; then
+    fail=$((fail + 1))
+    printf '  Fix: return additionalContext only and exit 0; wyx does not block edits (DEC-026).\n'
+fi
+if [ "$adv_err" -eq 0 ] && [ "$adv_hits" -eq 0 ]; then
+    printf '  OK: hooks return context only; none blocks an edit.\n'
 fi
 
 # ─── end tripwires ───
