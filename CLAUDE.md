@@ -174,7 +174,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Known Limitations
 
-- **Context-only enforcement**: The PreToolUse hook outputs boundary context but cannot block edits. Enforcement relies on the LLM respecting the context. Tested with Opus-class models; behavior with less capable models is unknown.
+- **Advisory by decision**: The hooks only add context and never deny an edit, although a PreToolUse hook could (exit 2 or `permissionDecision: "deny"`); DEC-026 keeps wyx advisory so an explicit user instruction wins, and `scripts/check-rules.sh` ("hooks stay advisory") fails on a blocking output. Compliance relies on the LLM respecting the context. Tested with Opus-class models; behavior with less capable models is unknown.
 - **Matcher coverage**: PreToolUse matches `Write|Edit|NotebookEdit`. File writes via `Bash` (e.g. `echo > file`, `sed -i`) or via MCP file-write tools (`mcp__server__*`) bypass the hook entirely.
 - **Harness tool availability**: Skills declare `Glob`/`Grep` in `allowed-tools`, but some harnesses expose neither. `/wyx:audit` falls back to read-only shell discovery in that case (DEC-019); `/wyx:map` already lists `Bash`. `/wyx:pipeline` and `/wyx:sync` *Discovery* mode (no-arg) still depend on Glob and degrade to path-given modes there; `/wyx:concept` Discovery escapes via its `Agent` tool.
 - **Spec heading format**: Some projects use capitalized headings (`## Purpose`, `## Actions`); others use lowercase (`## purpose`, `## actions`). The drift context hook handles both via fallback extraction.
@@ -200,7 +200,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **Integration is a platform constraint**: The 5 skills operate independently (no skill-to-skill invocation in Claude Code). This is structural, not a bug.
 - **No auto-invocation rules**: wyx adds no CLAUDE.md or `.claude/rules/` files of its own; its hooks deliver boundaries after each edit (DEC-025). In pilot-02, launch-loaded rules were followed by Claude ranking the import rules above the user's scope request, so the README offers them as the user's choice, not a wyx default (DEC-027).
 - **PostToolUse = context reinforcement, not import checking**: PostToolUse reinjects the dependency list only — no import parsing, no language-specific code. Previous proposals for mechanical import checking were rejected (3-agent debate): concept-name-to-import-path mapping has no clean bash solution, and language-specific code violates wyx's language-agnostic principle. Architectural rule: **hooks extract and inject; the LLM judges**.
-- **PostToolUse "contradictory signals" overturned**: The v0.20.0/v0.21.0 rejection was withdrawn (3-agent debate). PreToolUse=guidance, PostToolUse=verification is complementary, not contradictory (both arrive after the edit — DEC-025). The previous DA attacked the concept instead of the mechanism.
+- **PostToolUse "contradictory signals" overturned**: The v0.20.0/v0.21.0 rejection was withdrawn (3-agent debate) on the premise that PreToolUse guides before the edit and PostToolUse verifies after it. DEC-025 corrected that premise: both arrive with the edit's result and differ only in content (full boundaries vs the dependency list with a check-this-edit instruction). The previous DA attacked the concept instead of the mechanism.
 
 ## Test Results
 
