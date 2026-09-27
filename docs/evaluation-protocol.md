@@ -15,6 +15,7 @@ model. Rationale: DEC-022.
 | C — treatment | yes | yes (`--plugin-dir`) | Adds the plugin: hook injection plus skill listings |
 | A — optional | no (deleted before the run) | no | Measures what the specs alone contribute |
 | D — optional | yes | no; the same boundary sections as a path-scoped rule in `.claude/rules/` | Compares wyx with Claude Code's native loading |
+| E — pilot-02 | yes | no; the same boundary sections as `.claude/rules/` without `paths` (loaded at launch) | Launch-time delivery; bundles timing, channel and scope |
 
 B vs C isolates the plugin (its hooks plus its skill listings): both arms can
 read the specs, so a difference comes from wyx, not from the specs existing.
@@ -123,7 +124,7 @@ start time; cost and turns from the final `result` event; the diff
 - Report every run, including failures and aborts. No post-hoc exclusions.
 - State the limits: one model, the chosen projects and tasks, Claude only.
 
-## Delivery checks learned from pilot-01
+## Delivery checks learned from pilots 01 and 02
 
 Confirm each arm's condition actually reached Claude before judging it:
 
@@ -135,6 +136,9 @@ Confirm each arm's condition actually reached Claude before judging it:
   matching file. `cat` through Bash and Write/Edit do not load them, and the
   pilot's runs exposed no Glob/Grep tools, so most read files with `cat`.
   Log `InstructionsLoaded` and compare its timestamps with the first edit.
+- **Launch rules (E)**: an `InstructionsLoaded` entry with `load_reason:
+  session_start` for each rule, timestamped before the first assistant
+  message (8/8 in pilot-02).
 
 ## Pilot-01
 
@@ -143,21 +147,30 @@ The reference implementation is
 neutralized fixture, blinded AST scorer, stream preflight, replay and analysis,
 with the full report under `results/`. Results and interpretation: DEC-025.
 
-## Next arms (proposed, not scheduled)
+## Pilot-02 and next steps
 
-A follow-up should test delivery before the first response, on T1 and T3 only
-(T2 was at floor), with about k=6:
+DEC-026 keeps wyx advisory and rejects F, a PreToolUse deny that would hold
+every edit under a spec'd module. Pilot-02 ran the one follow-up, **E**: the
+same boundary text as `.claude/rules/*.md` without `paths`, which loads at
+launch; B vs E on T1 and T3, 4 runs per cell, decision rule pre-registered in
+[wyx-example/eval/pilot-02](https://github.com/jlifyio/wyx-example/tree/main/eval/pilot-02).
+New repository reach-ins: B 7/8, E 0/8; but every E run edited the module
+the prompt asked to avoid (8/8 vs 1/8), an outcome the primary did not score.
+Results and interpretation: DEC-027. No follow-up is scheduled.
 
-- **E**: the same boundary text as `.claude/rules/*.md` without `paths`, which
-  loads at launch.
-- **F**: PreToolUse returns `permissionDecision: "deny"` with the boundaries as
-  the reason, for every Write/Edit under a spec'd module, until one
-  `PostToolBatch` has passed. A deny on the first call alone lets the rest of
-  that response through.
+Lessons for any later study:
 
-Pursue a delivery change only if E or F brings T1 to 2/6 or fewer (B was 6/6
-across screen and pilot). Record over-application too: duplicated logic,
-wrappers, completion.
+- Score the edit to the out-of-scope module alongside the reach-in. When a
+  fixture offers only those two complete fixes, a drop in one is a rise in the
+  other.
+- Separate the parts E bundles: launch timing (e.g. SessionStart context
+  without rules), the instruction channel (rules loaded late), position
+  before the prompt, repetition of text already in CONCEPT.md, the wording,
+  and all-module scope.
+- The harness compares `~/.claude/settings.json` byte for byte. The file can
+  be rewritten with reordered keys while its content stays the same
+  (pilot-02's first batch stopped on this), so run setup right before the
+  batch.
 
 ## Passive monitoring
 
