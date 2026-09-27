@@ -184,7 +184,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Documentation
 
-- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-025). Check before making architectural changes.
+- `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-027). Check before making architectural changes.
 - `docs/evaluation-protocol.md` — Concurrent A/B protocol for re-measuring boundary-violation rates (DEC-022).
 
 ## Design Decisions
@@ -198,7 +198,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **No SYNCS.md splitting**: The `## coordination graph` requires a complete view of all sync flows; partial graphs give false confidence.
 - **Audit is discovery-only**: `/wyx:audit` scans and reports but does not generate specs or check staleness (defers to `/wyx:concept drift` for semantic analysis — mtime-based staleness produced 100% false positives in testing). A full orchestrator was rejected (3-agent debate) for context window exhaustion, template drift, and quality degradation.
 - **Integration is a platform constraint**: The 5 skills operate independently (no skill-to-skill invocation in Claude Code). This is structural, not a bug.
-- **No auto-invocation rules**: wyx adds no CLAUDE.md rules of its own; its hooks deliver boundaries after each edit (DEC-025), and whether launch-time rules do better is untested (evaluation protocol, arm E).
+- **No auto-invocation rules**: wyx adds no CLAUDE.md or `.claude/rules/` files of its own; its hooks deliver boundaries after each edit (DEC-025). In pilot-02, launch-loaded rules were followed by Claude ranking the import rules above the user's scope request, so the README offers them as the user's choice, not a wyx default (DEC-027).
 - **PostToolUse = context reinforcement, not import checking**: PostToolUse reinjects the dependency list only — no import parsing, no language-specific code. Previous proposals for mechanical import checking were rejected (3-agent debate): concept-name-to-import-path mapping has no clean bash solution, and language-specific code violates wyx's language-agnostic principle. Architectural rule: **hooks extract and inject; the LLM judges**.
 - **PostToolUse "contradictory signals" overturned**: The v0.20.0/v0.21.0 rejection was withdrawn (3-agent debate). PreToolUse=guidance, PostToolUse=verification is complementary, not contradictory (both arrive after the edit — DEC-025). The previous DA attacked the concept instead of the mechanism.
 
