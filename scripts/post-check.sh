@@ -1,9 +1,10 @@
 #!/bin/bash
 # wyx post-edit check — PostToolUse hook for Write|Edit|NotebookEdit
-# After a file edit near a CONCEPT.md, reinjects the dependency list as a
-# focused reminder for boundary compliance. Complements PreToolUse; both
-# reach Claude with the edit's result (DEC-025):
-#   PreToolUse = full boundary context, PostToolUse = dependency list
+# After a file edit near a CONCEPT.md, re-emits the dependency list with an
+# instruction to check the imports this edit added. Its context lands next to
+# the same tool result as drift-context.sh's (DEC-025), so Claude reads both in
+# one message: drift-context.sh = full boundary context, this hook = dependency
+# check for the edit just made.
 # Design: no import parsing, language-agnostic, silent when no spec found.
 
 set -euo pipefail
