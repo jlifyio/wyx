@@ -5,7 +5,7 @@ title: ""
 labels: bug
 ---
 
-**wyx version**: (run `/plugin` to check, e.g. v0.27.1)
+**wyx version**: (run `/plugin` to check, e.g. v0.27.2)
 **Claude Code version**: (e.g., 1.x.x)
 **OS**: (e.g., macOS 15, Ubuntu 24.04)
 
