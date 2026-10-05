@@ -71,8 +71,8 @@ at the call site; the callee cannot.
 This applies the owner's agent policy: agents that write code or make a judgment run on
 Opus, effort by role — `high` for judgment and implementation, `low` for mechanical
 edits, `xhigh` only where a measured quality gain over `high` justifies it; Haiku/Sonnet
-only for read-only lookup/search. Why: Opus 5.5 leads Fable 5.1 on published benchmarks
-at 40% of its price ($4/$20 vs $10/$50 per Mtok), so no role is worth a pricier tier.
+only for read-only lookup/search. Why: Opus 5.5 costs 40% of Fable 5.1 ($4/$20 vs $10/$50 per Mtok, Anthropic pricing page, 2026-10-06),
+so no role is assigned the pricier tier.
 Effort is out of wyx's reach — the Agent tool has no effort parameter and effort comes
 from agent frontmatter, which `Explore` does not have — so the call-site pin is the
 model only, and an `Explore` dispatch runs at the session's effort.
@@ -123,7 +123,7 @@ checks + `bash -n` over every shell script); run it before every release.
 
 ```bash
 # Test a single skill (non-interactive)
-unset CLAUDECODE  # required if running from within a Claude Code session
+# Works from inside a Claude Code session too: nested `claude -p` runs with CLAUDECODE=1 set (verified on 2.1.289)
 cd /path/to/project && claude --plugin-dir /path/to/wyx -p "/wyx:concept"
 
 # Verify plugin loads correctly
@@ -166,9 +166,9 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 **Directory membership by fixed string, not regex**: When testing whether a discovered directory belongs to a known set (e.g. `session-start.sh` uncovered-modules detection), keep the candidate paths newline-delimited and match with `grep -qxF` (fixed-string, whole-line) — do not interpolate paths into an ERE like `grep -qE "^($dirs)$"`. Directory paths legitimately contain regex metacharacters (SvelteKit route groups `(app)`, dotted dirs `v1.2`), which an ERE misinterprets, causing a spec'd directory to be misreported as uncovered.
 
-**PreToolUse/PostToolUse output format**: Must use `hookSpecificOutput.additionalContext` (structured JSON via `jq -n`). Plain text stdout is only shown in verbose mode per official docs.
+**PreToolUse/PostToolUse output format**: Must use `hookSpecificOutput.additionalContext` (structured JSON via `jq -n`). For these events, plain-text stdout on exit 0 goes only to the debug log and never reaches Claude (hooks reference, "Exit code 0").
 
-**JSONL reading**: Use `grep -v '^[[:space:]]*$' file | tail -1` instead of `tail -1` — Claude's Write tool may append trailing empty lines.
+**JSONL reading**: Use `grep -v '^[[:space:]]*$' file | tail -1` instead of `tail -1` — a hand-edited or appended file can end in blank lines, and `tail -1` would return one. (The Write tool itself writes content byte for byte; checked on 2.1.289.)
 
 **`set -eu` + command substitution**: `var=$(cmd | jq ...)` aborts the script when jq exits non-zero, even without `pipefail`. Use `var=$(...) || var="fallback"` on every command-sub that can fail — this covers jq parses (the `hook_source` parse at the top of `session-start.sh`; `grep -n '|| ' scripts/*.sh` lists every guard), stdin reads (`input=$(cat) || input=""` at the top of `drift-context.sh` and `post-check.sh`), and the load-bearing final emit (`jq -n ... || true`). A single unguarded line can silently kill a hook after partial output.
 
@@ -176,7 +176,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 - **Advisory by decision**: The hooks only add context and never deny an edit, although a PreToolUse hook could (exit 2 or `permissionDecision: "deny"`); DEC-026 keeps wyx advisory so an explicit user instruction wins, and `scripts/check-rules.sh` ("hooks stay advisory") fails on a blocking output. Compliance relies on the LLM respecting the context. Tested with Opus-class models; behavior with less capable models is unknown.
 - **Matcher coverage**: PreToolUse matches `Write|Edit|NotebookEdit`. File writes via `Bash` (e.g. `echo > file`, `sed -i`) or via MCP file-write tools (`mcp__server__*`) bypass the hook entirely.
-- **Harness tool availability**: Skills declare `Glob`/`Grep` in `allowed-tools`, but some harnesses expose neither. `/wyx:audit` falls back to read-only shell discovery in that case (DEC-019); `/wyx:map` already lists `Bash`. `/wyx:pipeline` and `/wyx:sync` *Discovery* mode (no-arg) still depend on Glob and degrade to path-given modes there; `/wyx:concept` Discovery escapes via its `Agent` tool.
+- **Harness tool availability**: Skills declare `Glob`/`Grep` in `allowed-tools`, but Claude Code leaves both tools out by default on macOS, Linux and WSL (Claude searches with `find`/`grep` through Bash instead), and `allowed-tools` pre-approves tools without adding or removing any. `/wyx:audit` falls back to read-only shell discovery (DEC-019); `/wyx:map` already lists `Bash`. `/wyx:pipeline` and `/wyx:sync` *Discovery* mode (no-arg) then searches through Bash, which prompts for permission because neither skill lists `Bash`; `/wyx:concept` Discovery can also delegate to its `Agent` tool.
 - **Spec heading format**: Some projects use capitalized headings (`## Purpose`, `## Actions`); others use lowercase (`## purpose`, `## actions`). The drift context hook handles both via fallback extraction.
 - **Delivery timing and size**: `hookSpecificOutput.additionalContext` is added next to the tool result, so the triggering edit and every other tool call in the same response are written without it (DEC-025). wyx never trims boundaries, but Claude Code moves any context over 10,000 characters into a file and passes a 2,000-character preview.
 - **Stale spec risk**: Outdated or incorrect specs can be worse than no specs — the hook injects boundary declarations verbatim without validation, which may guide Claude away from correct approaches toward spec-declared-but-nonexistent APIs. Run `/wyx:concept drift` regularly to catch divergence.
@@ -189,15 +189,15 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 ## Design Decisions
 
-- **Hook type: command only** — prompt hooks lack spec access, agent hooks add 10-30s latency. Command hooks extract boundaries in ~2s.
+- **Hook type: command only** — prompt hooks lack spec access; agent hooks added 10-30s per edit when measured in early 2026, against about 2s for the command hooks (not re-measured since).
 - **No truncation**: wyx never trims boundary declarations — incomplete boundaries defeat boundary checking (Claude Code's own 10,000-character cap still applies; see Known Limitations).
 - **No qualification, no shouting**: Boundary declarations are injected without caveats like "these might be stale" — qualified boundaries defeat boundary checking (same principle as no truncation). The instructions wrapped around them give the reason and carry no capitalised NEVER/MUST (rationale: DEC-024; `scripts/check-rules.sh` checks the per-edit hooks it lists).
 - **Drift stays in `/wyx:concept`**: `/wyx:concept drift` checks all 3 spec types (CONCEPT, PIPELINE, SYNCS) including cross-spec reference validation and SYNCS graph consistency. Extracting into a separate `/wyx:drift` skill was deferred — no functional conflict yet.
-- **Read-only subagents only**: Concept drift and map generation use Explore-type subagents (structurally read-only — Write/Edit unavailable) for parallel scanning. Audit uses direct Glob+Grep (no subagents — YAGNI at current scale, and subagent Bash commands caused approval fatigue); when a harness exposes no Glob/Grep tools, audit falls back to read-only shell (Bash `find`/`ls`/`grep -r`) for discovery only — never for writes, preserving the read-only invariant (DEC-019). Full plugin agents remain excluded.
+- **Read-only subagents only**: Concept drift and map generation use Explore-type subagents (structurally read-only — Write/Edit unavailable) for parallel scanning. Audit discovers directly with no subagents (YAGNI at current scale, and subagent Bash commands caused approval fatigue) — Glob+Grep where the session has them; where it has none (the default on macOS, Linux and WSL), audit uses read-only shell (Bash `find`/`ls`/`grep -r`) for discovery only — never for writes, preserving the read-only invariant (DEC-019). Full plugin agents remain excluded.
 - **One spec per directory**: Multi-file patterns (`CONCEPT-*.md`) were removed — they caused 83% irrelevant boundary context injection in flat directories.
 - **No SYNCS.md splitting**: The `## coordination graph` requires a complete view of all sync flows; partial graphs give false confidence.
 - **Audit is discovery-only**: `/wyx:audit` scans and reports but does not generate specs or check staleness (defers to `/wyx:concept drift` for semantic analysis — mtime-based staleness produced 100% false positives in testing). A full orchestrator was rejected (3-agent debate) for context window exhaustion, template drift, and quality degradation.
-- **Integration is a platform constraint**: The 5 skills operate independently (no skill-to-skill invocation in Claude Code). This is structural, not a bug.
+- **Skills stay independent**: The 5 skills do not invoke each other. Claude Code allows it — the Skill tool can run one skill from another, as workflow-kit's `closing` does with `/wyx:audit`, `/wyx:concept drift` and `/wyx:map` — but an orchestrator was rejected for context exhaustion, template drift and quality loss (DEC-001).
 - **No auto-invocation rules**: wyx adds no CLAUDE.md or `.claude/rules/` files of its own; its hooks deliver boundaries after each edit (DEC-025). In pilot-02, launch-loaded rules were followed by Claude ranking the import rules above the user's scope request, so the README offers them as the user's choice, not a wyx default (DEC-027).
 - **PostToolUse = context reinforcement, not import checking**: PostToolUse reinjects the dependency list only — no import parsing, no language-specific code. Previous proposals for mechanical import checking were rejected (3-agent debate): concept-name-to-import-path mapping has no clean bash solution, and language-specific code violates wyx's language-agnostic principle. Architectural rule: **hooks extract and inject; the LLM judges**.
 - **PostToolUse "contradictory signals" overturned**: The v0.20.0/v0.21.0 rejection was withdrawn (3-agent debate) on the premise that PreToolUse guides before the edit and PostToolUse verifies after it. DEC-025 corrected that premise: both arrive with the edit's result and differ only in content (full boundaries vs the dependency list with a check-this-edit instruction). The previous DA attacked the concept instead of the mechanism.
