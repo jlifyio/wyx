@@ -56,7 +56,6 @@ C. wyx is often enabled at user scope; a plain `claude -p` then loads it into
 the control arm too.
 
 ```bash
-unset CLAUDECODE   # required when launched from inside a Claude Code session
 COMMON=(--model <full-model-id> --output-format stream-json --verbose
         --include-hook-events --no-session-persistence --max-budget-usd 5
         --permission-mode acceptEdits
@@ -132,10 +131,11 @@ Confirm each arm's condition actually reached Claude before judging it:
   and read on the next model request. It never precedes the edit that triggers
   it, nor other edits in the same response. Record whether the run wrote its
   code in one response; in pilot-01 all 9 C runs did.
-- **Path-scoped rules (D)**: they load only when Claude uses the Read tool on a
-  matching file. `cat` through Bash and Write/Edit do not load them, and the
-  pilot's runs exposed no Glob/Grep tools, and most read files with `cat`
-  (observed on Claude Code 2.1.281).
+- **Path-scoped rules (D)**: they load when Claude uses the Read, Write or
+  Edit tool on a matching file (Claude Code memory docs, 2026-10-06); `cat`
+  through Bash does not load them. DEC-025 recorded Read-only loading, and
+  pilot-01's runs exposed no Glob/Grep tools and mostly read files with `cat`
+  (Claude Code 2.1.281).
   Log `InstructionsLoaded` and compare its timestamps with the first edit.
 - **Launch rules (E)**: an `InstructionsLoaded` entry with `load_reason:
   session_start` for each rule, timestamped before the first assistant
