@@ -45,7 +45,7 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 
 ### Hooks
 
-**SessionStart** (command): Scans project for existing wyx artifacts (CONCEPT.md, PIPELINE.md, SYNCS.md) and reports coverage in sorted order. Warns if `jq` is missing. Suggests `/wyx:audit` if none found — but **only when the hook `source` is `startup`** (or empty/unparseable, the safe degrade); on `resume`/`clear`/`compact` the no-specs hint stays silent so a globally-enabled wyx does not nag in every spec-less project (DEC-021). Also reports last drift check date from `.claude/wyx-drift-history.jsonl` (if exists), warns if specs modified since last drift check (`find -newer`), checks ARCHITECTURE.md freshness, lists uncovered modules (directories with >2 source files lacking CONCEPT.md, PIPELINE.md, or SYNCS.md), and reports code directories modified since last drift check. Non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`, `utils/`, `util/`, `helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`) are excluded at any path depth (matched against `"/$rel/"`, so a bare top-level `tests` is excluded too), and build/dependency/hidden directories are pruned during the walk (`find … -prune`, not post-walk `-not -path` filtering — ≈3× faster on large trees; the `-name '.*'` prune carries `-mindepth 1` so a hidden project root like `~/.dotfiles` is not pruned as a whole). Shadowing detection flags PIPELINE.md-only directories (not SYNCS.md — SYNCS.md does not stop hook traversal).
+**SessionStart** (command): Scans project for existing wyx artifacts (CONCEPT.md, PIPELINE.md, SYNCS.md) and reports coverage in sorted order. Warns if `jq` is missing. Suggests `/wyx:audit` if none found — but **only when the hook `source` is `startup`** (or empty/unparseable, the safe degrade); on `resume`/`clear`/`compact` the no-specs hint stays silent so a globally-enabled wyx does not nag in every spec-less project (DEC-021). Also reports last drift check date from `.claude/wyx-drift-history.jsonl` (if exists), warns if specs modified since last drift check (`find -newer`), checks ARCHITECTURE.md freshness, lists uncovered modules (directories with >2 source files lacking CONCEPT.md, PIPELINE.md, or SYNCS.md), and reports code directories modified since last drift check. Non-concept directories (`tests/`, `docs/`, `migrations/`, `components/ui/`, `types/`, `e2e/`, `cypress/`, `fixtures/`, `stubs/`, `mocks/`, `utils/`, `util/`, `helpers/`, `scripts/`, `schema/`, `schemas/`, `constants/`, `config/`) are excluded at any path depth (matched against `"/$rel/"`, so a bare top-level `tests` is excluded too), and build/dependency/hidden directories are pruned during the walk (how and why: the `PRUNE_DIRS` comments in `scripts/session-start.sh`). Shadowing detection flags PIPELINE.md-only directories (not SYNCS.md — SYNCS.md does not stop hook traversal).
 
 **PreToolUse** (command, matcher: `Write|Edit|NotebookEdit`): When writing near a spec file, outputs boundary declarations via `hookSpecificOutput.additionalContext`. Extracts `## purpose` from all co-located specs (CONCEPT/PIPELINE/SYNCS) for the spec listing, plus boundary declarations: `## interactions` and `## dependencies` from CONCEPT.md, and `## data boundary` from PIPELINE.md. (Traversal rule: Key Constraints.) Resolves relative file paths to absolute. Handles both `file_path` (Write/Edit) and `notebook_path` (NotebookEdit) via jq fallback chain. Skips inert files (`.json`, `.jsonl`, `.lock`, `.log`, `.txt`) — no context injection for non-code files. Handles CRLF line endings via `tr -d '\r'` in extract_section. Enables LLM self-checking against declared boundaries. **This is the core differentiator of wyx** — concept specs are the fuel, this hook is the engine.
 
@@ -62,25 +62,18 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 
 ### Agent dispatch: always pin the model
 
-Every `Agent` dispatch in this plugin MUST pass an explicit `model:` naming `opus`,
+Every `Agent` dispatch in this plugin passes an explicit `model:` naming `opus`,
 `sonnet` or `haiku` — `opus` for judgment, `sonnet` or `haiku` only for read-only
 lookup. wyx dispatches only the **built-in `Explore` agent**, which carries no
 frontmatter of its own, so an unpinned dispatch **inherits the session model**. Pin it
 at the call site; the callee cannot.
 
-This applies the owner's agent policy: agents that write code or make a judgment run on
-Opus, effort by role — `high` for judgment and implementation, `low` for mechanical
-edits, `xhigh` only where a measured quality gain over `high` justifies it; Haiku/Sonnet
-only for read-only lookup/search. Why: Opus 5.5 costs 40% of Fable 5.1 ($4/$20 vs $10/$50 per Mtok, Anthropic pricing page, 2026-10-06),
-so no role is assigned the pricier tier.
-Effort is out of wyx's reach — the Agent tool has no effort parameter and effort comes
-from agent frontmatter, which `Explore` does not have — so the call-site pin is the
-model only, and an `Explore` dispatch runs at the session's effort.
+The owner's agent policy behind this pin (Opus for judgment and code, effort by role, Haiku/Sonnet only for read-only lookup) and why `Explore` runs at the session's effort: `docs/agent-dispatch.md`.
 
 **Enforced**, not remembered: `scripts/check-rules.sh` fails when a `subagent_type`
 line under `skills/` has no `model:` naming `opus`, `sonnet` or `haiku` in its section,
 wired as `gates.rules`. Add the check in the same change that adds a rule. This section
-is the single source — skill references carry the pin and a one-line why, nothing more.
+(with `docs/agent-dispatch.md` for the reasoning) is the single source — skill references carry the pin and a one-line why, nothing more.
 
 Tell judgment from lookup by **which way a wrong answer fails**, not by how hard it feels:
 
@@ -89,12 +82,7 @@ Tell judgment from lookup by **which way a wrong answer fails**, not by how hard
 | `/wyx:map` spec reading | `sonnet` | Lookup — extracts *declared* sections; a wrong extraction is visible in the graph |
 | `/wyx:concept drift` scanning | `opus` | Judgment — emits **absence claims** (`✓ clean`); a wrong verdict produces no output |
 
-Two corollaries, both easy to get backwards. **A silent failure mode cannot be "start
-cheap, promote on a demonstrated miss"** — that needs the miss to be observable, and an
-under-report never generates its own evidence. And **do not re-derive the tier from
-"does the agent assign severity"** (nor from its read-only tools): `drift-detection.md`
-fixes severity in its tables and forbids escalation, making the task read mechanical
-when the judgment actually sits in category selection.
+Two corollaries: a silent failure mode cannot use "start cheap, promote on a demonstrated miss", and the tier is not derived from whether the agent assigns severity or from its read-only tools. Reasons: `docs/agent-dispatch.md`.
 
 ## Working in This Repository
 
@@ -112,8 +100,8 @@ This is a plugin repository. There is no build step, test suite, or package.json
 
 **Plugin structure rules**:
 - `plugin.json` goes inside `.claude-plugin/`
-- `hooks.json` goes at plugin root in `hooks/`, NOT inside `.claude-plugin/`
-- Hook scripts use `$CLAUDE_PLUGIN_ROOT` to resolve paths. In `hooks.json`, the command MUST quote it — `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"` — because the install path lives under the user's home and an unquoted expansion breaks on any username with a space (`/Users/John Smith/…` → exit 127, all hooks dead)
+- `hooks.json` goes at plugin root in `hooks/`, not inside `.claude-plugin/`
+- Hook scripts use `$CLAUDE_PLUGIN_ROOT` to resolve paths. In `hooks.json`, the command quotes it — `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"` — because the install path lives under the user's home and an unquoted expansion breaks on any username with a space (`/Users/John Smith/…` → exit 127, all hooks dead)
 
 ## Testing
 
@@ -152,7 +140,7 @@ for s in audit concept map pipeline sync; do test -f skills/$s/SKILL.md && echo 
 
 **Trailing slash stripping**: `PROJECT_DIR="${CLAUDE_PROJECT_DIR%/}"` — double-slash breaks `case` pattern matching against `$PROJECT_DIR/`.
 
-**Case-insensitive heading extraction**: `extract_section_ci` tries lowercase first, then Capitalized as fallback. Some projects use `## Purpose`; others use `## purpose`. Capitalize with `tr`, NOT the `${var^}` expansion — `${var^}` is bash 4+ and macOS ships bash 3.2, where it errors and silently disables the fallback for legacy capitalized-heading specs.
+**Case-insensitive heading extraction**: `extract_section_ci` tries lowercase first, then Capitalized as fallback. Some projects use `## Purpose`; others use `## purpose`. Capitalize with `tr`, not the `${var^}` expansion — `${var^}` is bash 4+ and macOS ships bash 3.2, where it errors and silently disables the fallback for legacy capitalized-heading specs.
 
 ```bash
 # extract_section uses sed address ranges between ## headings
@@ -186,6 +174,7 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 
 - `docs/DECISIONS.md` — Architecture Decision Records (DEC-001〜DEC-027). Check before making architectural changes.
 - `docs/evaluation-protocol.md` — Concurrent A/B protocol for re-measuring boundary-violation rates (DEC-022).
+- `docs/agent-dispatch.md` — The agent policy and tier reasoning behind "Agent dispatch: always pin the model".
 
 ## Design Decisions
 
@@ -196,11 +185,11 @@ sed -n "/^## ${section}[[:space:]]*$/,/^## [^#]/{...}" "$file"
 - **Read-only subagents only**: Concept drift and map generation use Explore-type subagents (structurally read-only — Write/Edit unavailable) for parallel scanning. Audit discovers directly with no subagents (YAGNI at current scale, and subagent Bash commands caused approval fatigue) — Glob+Grep where the session has them; where it has none (the default on macOS, Linux and WSL), audit uses read-only shell (Bash `find`/`ls`/`grep -r`) for discovery only — never for writes, preserving the read-only invariant (DEC-019). Full plugin agents remain excluded.
 - **One spec per directory**: Multi-file patterns (`CONCEPT-*.md`) were removed — they caused 83% irrelevant boundary context injection in flat directories.
 - **No SYNCS.md splitting**: The `## coordination graph` requires a complete view of all sync flows; partial graphs give false confidence.
-- **Audit is discovery-only**: `/wyx:audit` scans and reports but does not generate specs or check staleness (defers to `/wyx:concept drift` for semantic analysis — mtime-based staleness produced 100% false positives in testing). A full orchestrator was rejected (3-agent debate) for context window exhaustion, template drift, and quality degradation.
+- **Audit is discovery-only**: `/wyx:audit` scans and reports but does not generate specs or check staleness (defers to `/wyx:concept drift` for semantic analysis — mtime-based staleness produced 100% false positives in testing). No orchestrator (DEC-001, DEC-011).
 - **Skills stay independent**: The 5 skills do not invoke each other. Claude Code allows it — the Skill tool can run one skill from another, as workflow-kit's `closing` does with `/wyx:audit`, `/wyx:concept drift` and `/wyx:map` — but an orchestrator was rejected for context exhaustion, template drift and quality loss (DEC-001).
 - **No auto-invocation rules**: wyx adds no CLAUDE.md or `.claude/rules/` files of its own; its hooks deliver boundaries after each edit (DEC-025). In pilot-02, launch-loaded rules were followed by Claude ranking the import rules above the user's scope request, so the README offers them as the user's choice, not a wyx default (DEC-027).
-- **PostToolUse = context reinforcement, not import checking**: PostToolUse reinjects the dependency list only — no import parsing, no language-specific code. Previous proposals for mechanical import checking were rejected (3-agent debate): concept-name-to-import-path mapping has no clean bash solution, and language-specific code violates wyx's language-agnostic principle. Architectural rule: **hooks extract and inject; the LLM judges**.
-- **PostToolUse "contradictory signals" overturned**: The v0.20.0/v0.21.0 rejection was withdrawn (3-agent debate) on the premise that PreToolUse guides before the edit and PostToolUse verifies after it. DEC-025 corrected that premise: both arrive with the edit's result and differ only in content (full boundaries vs the dependency list with a check-this-edit instruction). The previous DA attacked the concept instead of the mechanism.
+- **PostToolUse = context reinforcement, not import checking**: PostToolUse reinjects the dependency list only — no import parsing, no language-specific code. Mechanical import checking was rejected: concept-name-to-import-path mapping has no clean bash solution, and language-specific code violates wyx's language-agnostic principle (DEC-014). Architectural rule: **hooks extract and inject; the LLM judges**.
+- **Both per-edit hooks arrive with the edit's result** and differ only in content (full boundaries vs the dependency list with a check-this-edit instruction); the history of the PostToolUse decision is in DEC-010, DEC-014 and DEC-025.
 
 ## Test Results
 
