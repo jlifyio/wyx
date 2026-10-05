@@ -62,7 +62,7 @@ Each skill is fully described in its own `SKILL.md`; CLAUDE.md keeps only one-li
 
 ### Agent dispatch: always pin the model
 
-Every `Agent` dispatch in this plugin passes an explicit `model:` naming `opus`,
+Every `Agent` dispatch in this plugin MUST pass an explicit `model:` naming `opus`,
 `sonnet` or `haiku` — `opus` for judgment, `sonnet` or `haiku` only for read-only
 lookup. wyx dispatches only the **built-in `Explore` agent**, which carries no
 frontmatter of its own, so an unpinned dispatch **inherits the session model**. Pin it
@@ -82,7 +82,7 @@ Tell judgment from lookup by **which way a wrong answer fails**, not by how hard
 | `/wyx:map` spec reading | `sonnet` | Lookup — extracts *declared* sections; a wrong extraction is visible in the graph |
 | `/wyx:concept drift` scanning | `opus` | Judgment — emits **absence claims** (`✓ clean`); a wrong verdict produces no output |
 
-Two corollaries: a silent failure mode cannot use "start cheap, promote on a demonstrated miss", and the tier is not derived from whether the agent assigns severity or from its read-only tools. Reasons: `docs/agent-dispatch.md`.
+Two corollaries: a silent failure mode cannot use "start cheap, promote on a demonstrated miss", and DO NOT re-derive the tier from whether the agent assigns severity or from its read-only tools. Reasons: `docs/agent-dispatch.md`.
 
 ## Working in This Repository
 
@@ -101,7 +101,7 @@ This is a plugin repository. There is no build step, test suite, or package.json
 **Plugin structure rules**:
 - `plugin.json` goes inside `.claude-plugin/`
 - `hooks.json` goes at plugin root in `hooks/`, not inside `.claude-plugin/`
-- Hook scripts use `$CLAUDE_PLUGIN_ROOT` to resolve paths. In `hooks.json`, the command quotes it — `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"` — because the install path lives under the user's home and an unquoted expansion breaks on any username with a space (`/Users/John Smith/…` → exit 127, all hooks dead)
+- Hook scripts use `$CLAUDE_PLUGIN_ROOT` to resolve paths. In `hooks.json`, the command MUST quote it — `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"` — because the install path lives under the user's home and an unquoted expansion breaks on any username with a space (`/Users/John Smith/…` → exit 127, all hooks dead)
 
 ## Testing
 
