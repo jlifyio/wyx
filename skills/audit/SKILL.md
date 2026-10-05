@@ -18,8 +18,8 @@ Unlike SessionStart (which reports counts), this adds: pattern-based pipeline/sy
 candidate detection and dependency-ordered command sequences.
 
 **Tool constraint**: Prefer Glob, Grep, and Read for all discovery and counting; do NOT
-use subagents. **Degraded mode** — some harnesses expose no Glob/Grep tools at all; when
-they are unavailable, fall back to **read-only** shell via Bash for discovery only
+use subagents. **Degraded mode** — Claude Code leaves Glob and Grep out by default on
+macOS, Linux and WSL, so expect this path there; when they are unavailable, fall back to **read-only** shell via Bash for discovery only
 (`find` / `ls` / `grep -r` to *list and read* files). Never use Bash to write, edit,
 move, or generate files — audit stays strictly read-only on every
 discovery path: it reports, it never produces artifacts.

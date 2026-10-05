@@ -17,8 +17,9 @@ When 5+ specs are found, use `Agent` with `subagent_type: "Explore"` and **`mode
 
 **`opus`, deliberately higher than `/wyx:map`'s `sonnet`** — because these agents
 emit *absence* claims (`Missing action: ✓ clean`), where a wrong verdict produces no
-output to notice. The rule, the tier table and the full reasoning live in `CLAUDE.md`
-→ "Agent dispatch: always pin the model"; `scripts/check-rules.sh` enforces the pin.
+output to notice. The rule and the tier table live in `CLAUDE.md` → "Agent dispatch:
+always pin the model", the full reasoning in `docs/agent-dispatch.md`;
+`scripts/check-rules.sh` enforces the pin.
 Do not restate the rationale here — an earlier draft did, and the two copies ended up
 pointing at each other as the canonical source.
 
