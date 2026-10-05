@@ -3,8 +3,8 @@
 ## DEC-001: Discovery-Only Audit Skill (No Orchestrator)
 
 **Date:** 2026-03-11
-**Status:** Accepted
-**Source:** docs/archive/plans/2026-03-11-wyx-audit-skill.md
+**Status:** Accepted; `allowed-tools` amended by DEC-019 (Bash added). 2026-10-06 note: the revisit trigger below has fired — Claude Code's Skill tool can run one skill from another (workflow-kit `closing` runs `/wyx:audit`, `/wyx:concept drift` and `/wyx:map` that way); the decision has not been re-examined since.
+**Source:** docs/archive/plans/2026-03-11-wyx-audit-skill.md (local archive, gitignored — not in the published repo)
 
 ### Context
 wyx needed a way to assess spec coverage across a project and recommend which skills to run. Three approaches were debated: full orchestrator (auto-generates specs), condensed template orchestrator (70% reduced templates), and discovery-only scanner.
@@ -28,7 +28,7 @@ Build `/wyx:audit` as a read-only discovery tool that scans for coverage gaps an
 
 **Date:** 2026-03-13
 **Status:** Accepted
-**Source:** docs/archive/superpowers/specs/2026-03-16-field-feedback-improvements-design.md
+**Source:** docs/archive/superpowers/specs/2026-03-16-field-feedback-improvements-design.md (local archive, gitignored — not in the published repo)
 
 ### Context
 `drift-context.sh` walks upward from edited files and stops at the first directory with a boundary-contributing spec. SYNCS.md was originally treated as a traversal-stopping spec, but it contributes no boundary declarations (`## interactions`, `## dependencies`, `## data boundary`). When PIPELINE.md + SYNCS.md co-existed in a directory without CONCEPT.md, ancestor CONCEPT.md boundaries were silently dropped.
@@ -51,7 +51,7 @@ Remove SYNCS.md from traversal stop logic. Only CONCEPT.md and PIPELINE.md stop 
 
 **Date:** 2026-03-16
 **Status:** Accepted
-**Source:** docs/archive/superpowers/specs/2026-03-16-field-feedback-improvements-design.md
+**Source:** docs/archive/superpowers/specs/2026-03-16-field-feedback-improvements-design.md (local archive, gitignored — not in the published repo)
 
 ### Context
 17 feedback items from 3 projects (DenkiOffice, WineLevel3, StockRecommendation) were triaged into 9 proposals for v0.19.0. The debate needed to decide scope: fix existing output problems vs. add new capabilities.
@@ -77,7 +77,7 @@ Accept 4 proposals totaling ~21 lines of string template changes, zero logic cha
 
 **Date:** 2026-02-25
 **Status:** Accepted
-**Source:** docs/archive/plans/2026-02-25-public-appeal-design.md
+**Source:** docs/archive/plans/2026-02-25-public-appeal-design.md (local archive, gitignored — not in the published repo)
 
 ### Context
 wyx had 4 potential audiences: Claude Code daily users, LLM coding enthusiasts, architecture community, and researchers. The README attempted to serve all of them, resulting in unfocused messaging (appeal score: 5/10).
@@ -99,7 +99,7 @@ README targets Claude Code daily users exclusively (3-0 agent consensus). Other 
 
 **Date:** 2026-02-25
 **Status:** Accepted; evidence framing amended by DEC-025
-**Source:** docs/archive/plans/2026-02-25-public-appeal-design.md
+**Source:** docs/archive/plans/2026-02-25-public-appeal-design.md (local archive, gitignored — not in the published repo)
 
 ### Context
 wyx's test results include p=0.21 (feature-level, not significant) and p=0.024 (import-level, overstated independence). The "silent data loss bug" story (SQL UPDATE missing 2/5 fields) found during drift detection is more compelling.
@@ -121,7 +121,7 @@ Lead evidence with the bug story and practical framing ("33 imports checked, 0 v
 
 **Date:** 2026-02-25
 **Status:** Accepted
-**Source:** docs/archive/plans/2026-02-25-launch-review-decision.md
+**Source:** docs/archive/plans/2026-02-25-launch-review-decision.md (local archive, gitignored — not in the published repo)
 
 ### Context
 The original public appeal plan called for a demo GIF showing boundary injection in action. However, boundary injection is invisible to users (it happens in hook context, not terminal output), making demonstration difficult. Claude's non-deterministic output also makes reproducible terminal recordings unreliable.
@@ -144,7 +144,7 @@ Use Mermaid diagram for v1 (3-0 consensus). Shows the concept in 3 seconds, rend
 
 **Date:** 2026-02-25
 **Status:** Accepted
-**Source:** docs/archive/plans/2026-02-25-launch-review-decision.md
+**Source:** docs/archive/plans/2026-02-25-launch-review-decision.md (local archive, gitignored — not in the published repo)
 
 ### Context
 Launch materials used "enforces" and "prevents" (~10 locations) to describe wyx's behavior. wyx injects boundary context; Claude voluntarily respects it. The distinction matters for credibility, especially on HN and r/programming.
@@ -165,8 +165,8 @@ Replace all "enforces/prevents" language with "injects" or "checks against." wyx
 ## DEC-008: Known Coupling — Phase 1 Format and Calibration Only
 
 **Date:** 2026-03-21
-**Status:** Accepted
-**Source:** docs/archive/superpowers/specs/2026-03-21-v0.20.0-known-coupling-multilang-drift-design.md
+**Status:** Accepted. 2026-10-06 note: the PostToolUse rejection cited in Consequences was overturned by DEC-014.
+**Source:** docs/archive/superpowers/specs/2026-03-21-v0.20.0-known-coupling-multilang-drift-design.md (local archive, gitignored — not in the published repo)
 
 ### Context
 2/3 field-tested projects (DenkiOffice and WineLevel3) independently invented ad-hoc sections for documenting intentional cross-concept data access (`## boundary exceptions`, direct SQL writes). The pattern was real but unstandardized — each project formatted it differently, and drift detection treated documented and undocumented coupling identically (both Critical severity).
@@ -191,7 +191,7 @@ Standardize `## known coupling` as an optional CONCEPT.md section with a prescri
 
 **Date:** 2026-03-21
 **Status:** Accepted
-**Source:** docs/archive/superpowers/specs/2026-03-21-v0.20.0-known-coupling-multilang-drift-design.md
+**Source:** docs/archive/superpowers/specs/2026-03-21-v0.20.0-known-coupling-multilang-drift-design.md (local archive, gitignored — not in the published repo)
 
 ### Context
 StockRecommendation project had an `exit_reason` enum mismatch between its Rust CLI and TypeScript frontend, caught during drift detection. The question was whether drift tooling needed language-specific awareness or multi-language scanning logic.
@@ -212,7 +212,7 @@ Add a 2-line documentation note to drift-detection.md explaining that drift dete
 ## DEC-010: Hook Architecture Frozen — No Expansion Beyond PreToolUse Context Injection
 
 **Date:** 2026-03-21 (consolidation of decisions from v0.17 through v0.21)
-**Status:** Partially superseded by DEC-014; re-examined in DEC-023 (unchanged)
+**Status:** Partially superseded by DEC-014; re-examined in DEC-023 (unchanged). 2026-10-06 note: "Git hooks cannot invoke Claude" (pre-commit alternative) does not hold — a git hook can run `claude -p`; that rejection rests on the LLM cost and latency the CI-drift item names.
 **Source:** MEMORY.md debate records: v0.17 Improvement (2026-03-10), v0.20.0 Field Feedback (2026-03-21), v0.21 Field Feedback (2026-03-21)
 
 ### Context
@@ -240,7 +240,7 @@ wyx's hook architecture is limited to PreToolUse context injection (Write/Edit/N
 ## DEC-011: Audit Scope — Read-Only Discovery with No Generated Artifacts
 
 **Date:** 2026-03-15 (consolidation of decisions from v0.18.1 through v0.21)
-**Status:** Accepted
+**Status:** Accepted; `allowed-tools` amended by DEC-019 (Bash added for read-only discovery) (2026-10-06 note).
 **Source:** MEMORY.md debate records: Audit Evolution (2026-03-15), v0.21 Field Feedback (2026-03-21)
 
 ### Context
@@ -456,7 +456,7 @@ The SessionStart freshness check (`session-start.sh:143-152`) fires "ARCHITECTUR
 ## DEC-019: create-plugin-Lens Review — Five Fixes, Three Rejections, "Improve All" Filtered Again
 
 **Date:** 2026-06-20
-**Status:** Accepted
+**Status:** Accepted. 2026-10-06 note: the residual "`/wyx:pipeline`+`/wyx:sync` Discovery still depends on Glob" understates the platform — Claude Code omits Glob/Grep by default on macOS, Linux and WSL, and `allowed-tools` neither adds nor removes tools, so that Discovery searches through Bash with a permission prompt (CLAUDE.md Known Limitations).
 **Source:** `/plugin-dev:create-plugin`-perspective review (skill-development + hook-development criteria; all three hooks smoke-tested in-harness) + cross-project field feedback (7 wyx items across 4 dogfooding sessions) → user "improve all should be fixed"
 
 ### Context
@@ -665,7 +665,7 @@ Wording only; no change to which sections are injected, when, or where:
 ## DEC-025: Pilot-01 — No Measurable Effect of Per-Edit Injection; Hook Context Arrives With the Tool Result
 
 **Date:** 2026-09-25
-**Status:** Accepted
+**Status:** Accepted. 2026-10-06 note: Mechanism item 2 ("load only on the Read tool") is the Claude Code 2.1.281 observation; the current memory docs say path-scoped rules load on Read, Write or Edit of a matching file.
 **Source:** Pilot-01 of the DEC-022 protocol — harness `jlifyio/wyx-example` `eval/pilot-01` (commit 2909c2a, analysis fix 7569817, results published at 378e4bd), 27 scored runs plus an 18-run design screen and 3 probes; a blind relabel, delivery audits and an adversarial review of the interpretation were run in the analysis session and are not published; the Claude Code hooks reference ("Add context for Claude"; PreToolUse `additionalContext`, fetched 2026-09-25) and memory reference (path-scoped rules)
 
 ### Context
