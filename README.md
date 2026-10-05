@@ -78,12 +78,12 @@ Requires [Claude Code CLI](https://claude.com/claude-code) with plugin support a
 
 | | CLAUDE.md, nested CLAUDE.md, `.claude/rules/` | wyx |
 |---|---|---|
-| **Delivery** | At launch: CLAUDE.md from the working directory up, and rules without `paths`. On read: nested CLAUDE.md and path-scoped rules for the file Claude reads (path-scoped rules load only via the Read tool; `cat` through Bash does not load them — observed on Claude Code 2.1.281) | After each write near a spec, delivered with the write's result |
+| **Delivery** | At launch: CLAUDE.md from the working directory up, and rules without `paths`. On read: nested CLAUDE.md for the file Claude reads. On Read, Write or Edit: path-scoped rules for the matching file (Claude Code memory docs, 2026-10-06; `cat` through Bash does not load them) | After each write near a spec, delivered with the write's result |
 | **Format** | Free-form instructions for Claude | Structured spec (purpose, state, actions, boundaries) that people review too |
 | **Staleness** | No check against the code | Drift detection compares spec and code |
 | **Colocation** | Nested CLAUDE.md sits in its directory; `.claude/rules/` usually at the project root | Next to the code it describes |
 
-All of these rely on Claude choosing to comply. Nested CLAUDE.md and path-scoped rules already give Claude module-specific context when it reads a file; wyx adds a reminder after each write, a spec format that doubles as design documentation, and drift detection. Pilot-01 compared wyx with the same boundary sections loaded as path-scoped rules and found no detectable difference; wyx's boundaries reached Claude before its first edit in none of 9 runs, the path-scoped rules in 2 of 9. Pilot-02 loaded them at launch as rules without `paths`, and Claude then put the import rules ahead of the user's request to stay in one module (see Test results and the FAQ).
+All of these rely on Claude choosing to comply. Nested CLAUDE.md and path-scoped rules already give Claude module-specific context when it reads a file (path-scoped rules also when it writes or edits one); wyx adds a reminder after each write, a spec format that doubles as design documentation, and drift detection. Pilot-01 compared wyx with the same boundary sections loaded as path-scoped rules and found no detectable difference; wyx's boundaries reached Claude before its first edit in none of 9 runs, the path-scoped rules in 2 of 9. Pilot-02 loaded them at launch as rules without `paths`, and Claude then put the import rules ahead of the user's request to stay in one module (see Test results and the FAQ).
 
 ## Skills
 

@@ -23,7 +23,6 @@ wyx has no build step or test suite. Testing is done against real projects.
 
 **Test a single skill:**
 ```bash
-unset CLAUDECODE
 cd /path/to/project && claude --plugin-dir /path/to/wyx -p "/wyx:concept"
 ```
 

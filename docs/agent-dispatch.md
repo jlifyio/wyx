@@ -19,6 +19,6 @@ model only, and an `Explore` dispatch runs at the session's effort.
 Two corollaries, both easy to get backwards. **A silent failure mode cannot be "start
 cheap, promote on a demonstrated miss"** — that needs the miss to be observable, and an
 under-report never generates its own evidence. And **do not re-derive the tier from
-"does the agent assign severity"** (nor from its read-only tools): `drift-detection.md`
+"does the agent assign severity"** (nor from its read-only tools): `skills/concept/references/drift-detection.md`
 fixes severity in its tables and forbids escalation, making the task read mechanical
 when the judgment actually sits in category selection.

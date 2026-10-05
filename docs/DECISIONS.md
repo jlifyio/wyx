@@ -212,7 +212,7 @@ Add a 2-line documentation note to drift-detection.md explaining that drift dete
 ## DEC-010: Hook Architecture Frozen — No Expansion Beyond PreToolUse Context Injection
 
 **Date:** 2026-03-21 (consolidation of decisions from v0.17 through v0.21)
-**Status:** Partially superseded by DEC-014; re-examined in DEC-023 (unchanged). 2026-10-06 note: "Git hooks cannot invoke Claude" (pre-commit alternative) does not hold — a git hook can run `claude -p`; that rejection rests on the LLM cost and latency the CI-drift item names.
+**Status:** Partially superseded by DEC-014; re-examined in DEC-023 (unchanged). 2026-10-06 note: "Git hooks cannot invoke Claude" (pre-commit alternative) does not hold — a git hook can run `claude -p`; that rejection rests on the cost and infrastructure barriers the CI-drift item names.
 **Source:** MEMORY.md debate records: v0.17 Improvement (2026-03-10), v0.20.0 Field Feedback (2026-03-21), v0.21 Field Feedback (2026-03-21)
 
 ### Context
@@ -456,7 +456,7 @@ The SessionStart freshness check (`session-start.sh:143-152`) fires "ARCHITECTUR
 ## DEC-019: create-plugin-Lens Review — Five Fixes, Three Rejections, "Improve All" Filtered Again
 
 **Date:** 2026-06-20
-**Status:** Accepted. 2026-10-06 note: the residual "`/wyx:pipeline`+`/wyx:sync` Discovery still depends on Glob" understates the platform — Claude Code omits Glob/Grep by default on macOS, Linux and WSL, and `allowed-tools` neither adds nor removes tools, so that Discovery searches through Bash with a permission prompt (CLAUDE.md Known Limitations).
+**Status:** Accepted. 2026-10-06 note: the residual "`/wyx:pipeline`+`/wyx:sync` Discovery still depends on Glob" understates the platform — Claude Code omits Glob/Grep by default on macOS, Linux and WSL, and `allowed-tools` neither adds nor removes tools, so that Discovery searches through Bash, whose read-only `find`/`grep` run without a permission prompt (CLAUDE.md Known Limitations).
 **Source:** `/plugin-dev:create-plugin`-perspective review (skill-development + hook-development criteria; all three hooks smoke-tested in-harness) + cross-project field feedback (7 wyx items across 4 dogfooding sessions) → user "improve all should be fixed"
 
 ### Context
