@@ -7,7 +7,7 @@ set -eu
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 PROJECT_DIR="${PROJECT_DIR%/}"
 
-# Hook input source (startup|resume|clear|compact) — used to gate the no-specs
+# Hook input source (startup|resume|clear|compact|fork) — used to gate the no-specs
 # hint below. TTY guard keeps manual `bash session-start.sh` runs from blocking
 # on stdin; empty/unparseable input degrades to "" which is treated as startup.
 hook_source=""
@@ -58,8 +58,10 @@ total=$((concept_count + pipeline_count + sync_count))
 
 # No artifacts found — suggest getting started, but only on real session
 # startup. The plugin is enabled globally (user scope) by default, so this
-# fires in every spec-less project; re-printing on resume/clear/compact is
-# pure noise. Empty/unparseable source (old CLI, missing jq) still shows it.
+# fires in every spec-less project; re-printing on resume/clear/compact/fork is
+# pure noise (a fork carries the original transcript, hint included). Unknown
+# future sources stay silent too. Empty/unparseable source (old CLI, missing
+# jq) still shows it.
 if [ "$total" -eq 0 ]; then
   case "$hook_source" in
     ""|startup)
