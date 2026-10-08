@@ -17,6 +17,10 @@ model only, and an `Explore` dispatch runs at the session's effort.
 
 ## Why map's spec reading runs on Haiku
 
+A dropped line leaves no trace in the graph — only an invented one shows, as a spurious edge —
+so the miss rate had to be measured up front rather than left for a later miss to reveal
+(first corollary below).
+
 Measured 2026-10-08 (Claude Code 2.1.293, Haiku 5.5 vs Sonnet 5.5, both at `high`) on the
 33 specs of aofuda `a766d59`, 363 graph-section lines in all. Each run was a top-level
 `claude -p --agent Explore` given one group of 4–5 specs and asked, as `skills/map/SKILL.md`
