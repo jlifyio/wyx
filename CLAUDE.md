@@ -79,7 +79,7 @@ Tell judgment from lookup by **which way a wrong answer fails**, not by how hard
 
 | Fan-out | Model | Role — failure direction |
 |---|---|---|
-| `/wyx:map` spec reading | `sonnet` | Lookup — extracts *declared* sections; a wrong extraction is visible in the graph |
+| `/wyx:map` spec reading | `haiku` | Lookup — extracts *declared* sections; a wrong extraction is visible in the graph |
 | `/wyx:concept drift` scanning | `opus` | Judgment — emits **absence claims** (`✓ clean`); a wrong verdict produces no output |
 
 Two corollaries: a silent failure mode cannot use "start cheap, promote on a demonstrated miss", and DO NOT re-derive the tier from whether the agent assigns severity or from its read-only tools. Reasons: `docs/agent-dispatch.md`.

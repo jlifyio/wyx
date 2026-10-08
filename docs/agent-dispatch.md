@@ -14,6 +14,14 @@ Effort is out of wyx's reach — the Agent tool has no effort parameter and effo
 from agent frontmatter, which `Explore` does not have — so the call-site pin is the
 model only, and an `Explore` dispatch runs at the session's effort.
 
+## Why map's spec reading runs on Haiku
+
+Measured 2026-10-08 (Claude Code 2.1.293, Haiku 5.5 vs Sonnet 5.5, both at `high`): the 33
+aofuda specs in 8 groups of 4–5, an `Explore` agent per group asked for the graph sections
+verbatim, 3 runs per group per model. Both models returned all 1,089 section lines with
+none missed and none invented; Haiku cost $0.23 in total against Sonnet's $3.64. The rule
+fixed before the runs was "switch only if Haiku misses and invents no more than Sonnet".
+
 ## Telling judgment from lookup — the corollaries
 
 Two corollaries, both easy to get backwards. **A silent failure mode cannot be "start

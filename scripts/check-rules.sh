@@ -96,7 +96,7 @@ if [ "$dispatch_hits" -eq 0 ]; then
 elif [ "$unpinned" -gt 0 ]; then
     printf '  %d of %d dispatch(es) unpinned.\n' "$unpinned" "$dispatch_hits"
     printf '  Fix: pass model: on the Agent call — opus for judgment, sonnet or haiku\n'
-    printf '       only for read-only lookup (map = sonnet, drift = opus).\n'
+    printf '       only for read-only lookup (map = haiku, drift = opus).\n'
     printf '       See CLAUDE.md -> "Agent dispatch: always pin the model".\n'
     fail=$((fail + 1))
 else

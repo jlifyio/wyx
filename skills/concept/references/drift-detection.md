@@ -15,7 +15,7 @@ When `$ARGUMENTS` starts with `drift`, scan for spec-code divergence.
 
 When 5+ specs are found, use `Agent` with `subagent_type: "Explore"` and **`model: 'opus'`** to scan specs in parallel. Explore agents are read-only (Write/Edit structurally unavailable) — safe for drift analysis. (The threshold is lower than `/wyx:map`'s 10+ because drift agents read both spec AND implementation per task; the heavier per-task work amortizes agent-spawn overhead at lower N.)
 
-**`opus`, deliberately higher than `/wyx:map`'s `sonnet`** — because these agents
+**`opus`, deliberately higher than `/wyx:map`'s `haiku`** — because these agents
 emit *absence* claims (`Missing action: ✓ clean`), where a wrong verdict produces no
 output to notice. The rule and the tier table live in `CLAUDE.md` → "Agent dispatch:
 always pin the model", the full reasoning in `docs/agent-dispatch.md`;
