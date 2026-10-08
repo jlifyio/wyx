@@ -49,7 +49,7 @@ Before reading all specs, check if regeneration is needed:
 When 10+ specs are found, use `Agent` with `subagent_type: "Explore"` and `model: 'haiku'` to read specs in parallel. Pin the model on the dispatch: spec reading is read-only lookup, the one role that may run below Opus, and an unpinned dispatch would inherit the session model. Below 10, direct Read is faster (agent spawning overhead exceeds read time). Explore agents are read-only (Write/Edit structurally unavailable).
 
 - Spawn one Explore agent per 3-5 specs grouped by directory proximity
-- Each agent reads the specs and returns: type, name, directory, and key sections (interactions, dependencies, data boundary, coordination graph)
+- Each agent reads the specs and returns, for each: type, name, directory, and these sections copied verbatim, line for line — `## interactions` and `## dependencies` (CONCEPT.md), `## purpose` and `## data boundary` (PIPELINE.md), `## coordination graph` (SYNCS.md). Ask for copies, not summaries: Step 2 takes edge labels verbatim from these lines, and a summarised line can drop an edge without a trace.
 - After all agents complete, merge the inventory in the main context and proceed to Step 2
 
 ## Step 2: Extract Relationships
