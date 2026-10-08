@@ -75,14 +75,12 @@ line under `skills/` has no `model:` naming `opus`, `sonnet` or `haiku` in its s
 wired as `gates.rules`. Add the check in the same change that adds a rule. This section
 (with `docs/agent-dispatch.md` for the reasoning) is the single source — skill references carry the pin and a one-line why, nothing more.
 
-Tell judgment from lookup by **which way a wrong answer fails**, not by how hard it feels:
+Tell judgment from lookup by **which way a wrong answer fails** and, where it fails silently, by **whether a miss can be counted without judgment**, not by how hard it feels:
 
 | Fan-out | Model | Role — failure direction |
 |---|---|---|
-| `/wyx:map` spec reading | `haiku` | Lookup — copies *declared* sections; an invented line shows in the graph, a dropped one does not, so misses were counted against the source before the tier dropped (`docs/agent-dispatch.md`) |
-| `/wyx:concept drift` scanning | `opus` | Judgment — emits **absence claims** (`✓ clean`); a wrong verdict produces no output |
-
-A dropped line in map fails as silently as a wrong `✓ clean` in drift; what separates them is that a dropped line can be counted against the source file, so map's tier rests on a measurement, not on visibility.
+| `/wyx:map` spec reading | `haiku` | Lookup — copies *declared* sections; a dropped line is silent, but the spec file is its own answer key, so misses are counted against it (`docs/agent-dispatch.md`) |
+| `/wyx:concept drift` scanning | `opus` | Judgment — emits **absence claims** (`✓ clean`); a wrong verdict produces no output, and only a seeded fixture someone authors and judges can count it |
 
 Two corollaries: a silent failure mode cannot use "start cheap, promote on a demonstrated miss", and DO NOT re-derive the tier from whether the agent assigns severity or from its read-only tools. Reasons: `docs/agent-dispatch.md`.
 

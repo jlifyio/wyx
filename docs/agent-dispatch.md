@@ -17,9 +17,11 @@ model only, and an `Explore` dispatch runs at the session's effort.
 
 ## Why map's spec reading runs on Haiku
 
-A dropped line leaves no trace in the graph — only an invented one shows, as a spurious edge —
-so the miss rate had to be measured up front rather than left for a later miss to reveal
-(first corollary below).
+A dropped line leaves no trace in the graph, and an invented one looks like a real edge or
+label, so both had to be counted up front rather than left for a later miss to reveal (first
+corollary below). Counting them needs no judgment: the spec file is its own answer key. A
+wrong `✓ clean` from drift is just as silent, but counting one needs a seeded fixture that
+someone authors and then judges each verdict against; no such measurement is recorded.
 
 Measured 2026-10-08 (Claude Code 2.1.293, Haiku 5.5 vs Sonnet 5.5, both at `high`) on the
 33 specs of aofuda `a766d59`, 363 graph-section lines in all. Each run was a top-level
@@ -27,7 +29,10 @@ Measured 2026-10-08 (Claude Code 2.1.293, Haiku 5.5 vs Sonnet 5.5, both at `high
 Step 1 now asks, to copy every section line verbatim (PIPELINE.md's `## purpose` included),
 with the answer forced into a JSON schema; 8 groups, 3 runs per group per model. Both
 models returned every line in all 24 of their runs (1,089 line checks each), none missed
-and none invented; Haiku cost $0.23 in total against Sonnet's $3.64.
+and none invented; Haiku cost $0.23 in total against Sonnet's $3.64. A returned line counted
+as copied when, after list markers and whitespace were normalised, `difflib` rated it at least
+0.9 similar to a source line, so a slightly altered line would have counted as neither missed
+nor invented.
 The rule fixed before the runs: switch only if Haiku's missed lines and its invented lines
 are each at most Sonnet's plus 0.5 % of the lines checked, and every Haiku run returns its
 structured output. Both models hit the ceiling, so this shows Haiku is no worse at copying
