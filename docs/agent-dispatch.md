@@ -1,7 +1,8 @@
 # Agent dispatch — policy and tier reasoning
 
 Background for `CLAUDE.md` → "Agent dispatch: always pin the model". The rule, its enforcement and the fan-out
-table stay in `CLAUDE.md`; this file keeps the policy it applies and the reasoning behind the two corollaries.
+table stay in `CLAUDE.md`; this file keeps the policy it applies, the measurement behind map's tier, and the
+reasoning behind the two corollaries.
 
 ## The owner's agent policy
 
@@ -16,11 +17,23 @@ model only, and an `Explore` dispatch runs at the session's effort.
 
 ## Why map's spec reading runs on Haiku
 
-Measured 2026-10-08 (Claude Code 2.1.293, Haiku 5.5 vs Sonnet 5.5, both at `high`): the 33
-aofuda specs in 8 groups of 4–5, an `Explore` agent per group asked for the graph sections
-verbatim, 3 runs per group per model. Both models returned all 1,089 section lines with
-none missed and none invented; Haiku cost $0.23 in total against Sonnet's $3.64. The rule
-fixed before the runs was "switch only if Haiku misses and invents no more than Sonnet".
+Measured 2026-10-08 (Claude Code 2.1.293, Haiku 5.5 vs Sonnet 5.5, both at `high`) on the
+33 specs of aofuda `a766d59`, 363 graph-section lines in all. Each run was a top-level
+`claude -p --agent Explore` given one group of 4–5 specs and asked, as `skills/map/SKILL.md`
+Step 1 now asks, to copy every section line verbatim (PIPELINE.md's `## purpose` included),
+with the answer forced into a JSON schema; 8 groups, 3 runs per group per model. Both
+models returned every line in all 24 of their runs (1,089 line checks each), none missed
+and none invented; Haiku cost $0.23 in total against Sonnet's $3.64.
+The rule fixed before the runs: switch only if Haiku's missed lines and its invented lines
+are each at most Sonnet's plus 0.5 % of the lines checked, and every Haiku run returns its
+structured output. Both models hit the ceiling, so this shows Haiku is no worse at copying
+sections, not that it reads harder material as well as Sonnet. A separate check confirmed
+an `Explore` dispatched with `model: 'haiku'` from an Opus 5.5 session runs Haiku 5.5 at the
+session's effort. The harness and per-run data are in the owner's jlifyio workspace
+(`docs/lookup-tier-eval-2026-10-08/`), not in this repository.
+
+Re-measure when the `haiku` alias moves to a new model, when the agent instruction in
+`skills/map/SKILL.md` Step 1 changes, or before relying on map in sessions below `high`.
 
 ## Telling judgment from lookup — the corollaries
 
